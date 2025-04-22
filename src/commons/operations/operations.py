@@ -75,7 +75,7 @@ class AsyncOperation:
 
 # TODO: дописать докстринг
 def async_operation(
-    method: Callable[P, Awaitable[T]]
+    method: Callable[P, Awaitable[T]],
 ) -> Callable[P, Awaitable[T]]:
     """
     Декоратор для выполнения тела метода класса в рамках операции.

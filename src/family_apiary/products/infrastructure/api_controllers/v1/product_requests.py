@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter
 
 product_requests_router = APIRouter(prefix='/product_requests')
 

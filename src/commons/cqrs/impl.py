@@ -18,7 +18,7 @@ from .base import (
 
 
 def find_subclasses(
-    cls: Type[_RequestHandler[TRequest, TResult]]
+    cls: Type[_RequestHandler[TRequest, TResult]],
 ) -> list[Type[_RequestHandler[TRequest, TResult]]]:
     """
     Возвращает наследников класса

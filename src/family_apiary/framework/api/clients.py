@@ -3,17 +3,17 @@ from typing import Annotated
 
 from fastapi import Depends, HTTPException
 from fastapi.security import OAuth2PasswordBearer
+from plannery.framework.containers import container, get_query_mediator
+from plannery.users.application.use_cases.query import (
+    IsUserAuthSessionCancelledQuery,
+    IsUserAuthSessionCancelledResult,
+)
 from pydantic import BaseModel
 from starlette import status
 
 from commons.api.auth import JwtManager
 from commons.cqrs.impl import QueryMediator
 from commons.entities.base import EntityId
-from plannery.framework.containers import container, get_query_mediator
-from plannery.users.application.use_cases.query import (
-    IsUserAuthSessionCancelledQuery,
-    IsUserAuthSessionCancelledResult,
-)
 
 
 class CurrentClient(BaseModel):

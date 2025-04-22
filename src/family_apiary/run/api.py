@@ -2,7 +2,7 @@ import logging
 
 import uvicorn
 
-from family_apiary.framework import log
+# from family_apiary.framework import log
 from family_apiary.framework.api.app import create_app
 
 # from family_apiary.framework.api.settings import (

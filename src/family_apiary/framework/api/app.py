@@ -9,14 +9,17 @@ from starlette.middleware.cors import CORSMiddleware
 
 from commons.api.exception_handlers import app_error_handler
 from commons.app_errors import AppError
-from family_apiary.framework.api.settings import (
-    ApiPrometheusMetricsSettings,
-    ApiSettings,
+
+# from .metrics import configure_prometheus_metrics_endpoint
+from family_apiary.products.infrastructure.api_controllers import (
+    products_v1_router,
 )
 
+# from family_apiary.framework.api.settings import (
+#     ApiPrometheusMetricsSettings,
+#     ApiSettings,
+# )
 
-from .metrics import configure_prometheus_metrics_endpoint
-from family_apiary.products.infrastructure.api_controllers import products_v1_router
 
 root_router = APIRouter()
 
@@ -55,7 +58,7 @@ def create_app(
                 allow_headers=['*'],
             )
         ],
-        debug=True #settings.API_DEBUG_MODE, TODO:!!!
+        debug=True,  # settings.API_DEBUG_MODE, TODO:!!!
     )
     app.include_router(root_router)
     api_router = APIRouter(prefix='/api')
