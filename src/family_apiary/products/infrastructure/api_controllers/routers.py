@@ -10,3 +10,10 @@ products_v1_router.include_router(
     product_requests_router,
     tags=['Заявки на покупку продукции'],
 )
+
+
+products_router = APIRouter(prefix='/products')
+
+products_router.include_router(
+    products_v1_router,
+)

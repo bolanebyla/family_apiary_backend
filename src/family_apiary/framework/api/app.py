@@ -12,7 +12,7 @@ from commons.app_errors import AppError
 
 # from .metrics import configure_prometheus_metrics_endpoint
 from family_apiary.products.infrastructure.api_controllers import (
-    products_v1_router,
+    products_router,
 )
 
 # from family_apiary.framework.api.settings import (
@@ -63,7 +63,7 @@ def create_app(
     app.include_router(root_router)
     api_router = APIRouter(prefix='/api')
 
-    api_router.include_router(products_v1_router)
+    api_router.include_router(products_router)
 
     app.include_router(api_router)
 

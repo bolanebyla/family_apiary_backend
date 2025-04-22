@@ -1,1 +1,1 @@
-from .routers import products_v1_router
+from .routers import products_router
