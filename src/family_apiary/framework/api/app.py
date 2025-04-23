@@ -2,6 +2,7 @@ import logging
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
+from dishka.integrations.fastapi import DishkaRoute, setup_dishka
 from fastapi import APIRouter, FastAPI
 from fastapi.responses import RedirectResponse
 from starlette.middleware import Middleware
@@ -9,6 +10,7 @@ from starlette.middleware.cors import CORSMiddleware
 
 from commons.api.exception_handlers import app_error_handler
 from commons.app_errors import AppError
+from family_apiary.framework.containers import container
 
 # from .metrics import configure_prometheus_metrics_endpoint
 from family_apiary.products.infrastructure.api_controllers import (
@@ -35,7 +37,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     logger.info('Lifespan loaded')
     yield
     logger.info('Lifespan cleaning up...')
-
+    await app.state.dishka_container.close()
     logger.info('Lifespan cleaned up')
 
 
@@ -61,7 +63,7 @@ def create_app(
         debug=True,  # settings.API_DEBUG_MODE, TODO:!!!
     )
     app.include_router(root_router)
-    api_router = APIRouter(prefix='/api')
+    api_router = APIRouter(prefix='/api', route_class=DishkaRoute)
 
     api_router.include_router(products_router)
 
@@ -73,6 +75,8 @@ def create_app(
     #     app=app,
     #     settings=api_prometheus_metrics_settings,
     # )
+
+    setup_dishka(container=container, app=app)
 
     return app
 
