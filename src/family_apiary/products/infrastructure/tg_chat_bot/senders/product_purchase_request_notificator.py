@@ -1,3 +1,5 @@
+from typing import override
+
 from aiogram import Bot
 
 from family_apiary.products.application.use_cases.interfaces import (
@@ -14,6 +16,7 @@ class ProductPurchaseRequestNotificatorImpl(ProductPurchaseRequestNotificator):
         self._bot = bot
         self._notification_chat_id = notification_chat_id
 
+    @override
     async def send_new_request_notification(self) -> None:
         await self._bot.send_message(
             chat_id=self._notification_chat_id,
