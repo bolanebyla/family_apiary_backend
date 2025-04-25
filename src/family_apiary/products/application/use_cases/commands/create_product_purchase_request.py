@@ -1,9 +1,21 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from decimal import Decimal
 
 from commons.cqrs.base import CommandHandler
+from commons.entities.base import EntityId
+from commons.value_objects import PhoneNumber
 from family_apiary.products.application.use_cases.interfaces import (
     ProductPurchaseRequestNotificator,
 )
+
+
+@dataclass
+class CreateProductPurchaseRequestCommandProduct:
+    id: EntityId
+    name: str
+    description: str
+    price: Decimal
+    category: str
 
 
 @dataclass
@@ -12,7 +24,11 @@ class CreateProductPurchaseRequestCommand:
     Команда на создание заявки на покупку продукции
     """
 
-    pass
+    phone_number: PhoneNumber
+    name: str
+    products: list[CreateProductPurchaseRequestCommandProduct] = field(
+        default_factory=list,
+    )
 
 
 class CreateProductPurchaseRequestHandler(
