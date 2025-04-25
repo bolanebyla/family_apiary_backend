@@ -33,7 +33,7 @@ class QueryHandler(_RequestHandler[TRequest, TResult], ABC):
     async def handle(self, query: TRequest) -> TResult: ...
 
 
-class QueryDispatcher(ABC):
+class QueryMediator(ABC):
     """
     Базовый медиатор запросов
     """
@@ -42,7 +42,7 @@ class QueryDispatcher(ABC):
     async def send(self, query: TRequest) -> TResult | None: ...
 
 
-class CommandDispatcher(ABC):
+class CommandMediator(ABC):
     """
     Базовый медиатор команд
     """

@@ -2,15 +2,16 @@ import inspect
 from abc import abstractmethod
 from typing import Any, Type
 
-import punq
+from dishka import AsyncContainer
+from typing_extensions import override
 
 from commons.operations.operations import AsyncOperation, async_operation
 
 from .base import (
-    CommandDispatcher,
     CommandHandler,
-    QueryDispatcher,
+    CommandMediator,
     QueryHandler,
+    QueryMediator,
     TRequest,
     TResult,
     _RequestHandler,
@@ -53,7 +54,7 @@ class CQRSMediator:
     Каждый обработчик вызывается в рамках операции (транзакции)
     """
 
-    def __init__(self, container: punq.Container, operation: AsyncOperation):
+    def __init__(self, container: AsyncContainer, operation: AsyncOperation):
         self._handlers_by_requests: dict[
             Any, Type[_RequestHandler[Any, Any]]
         ] = {}
@@ -68,11 +69,13 @@ class CQRSMediator:
             raise ValueError(
                 f'Handler for request {type(req)} is not registered'
             )
-        handler: _RequestHandler[TRequest, TResult] = self._container.resolve(
-            handler_cls
-        )
 
-        return await handler.handle(req)
+        async with self._container() as request_container:
+            handler: _RequestHandler[
+                TRequest, TResult
+            ] = await request_container.get(handler_cls)
+
+            return await handler.handle(req)
 
     def resolve_handlers(self) -> None:
         """
@@ -108,31 +111,35 @@ class CQRSMediator:
     ) -> Type[_RequestHandler[Any, Any]]: ...
 
 
-class QueryMediator(CQRSMediator, QueryDispatcher):
+class QueryMediatorImpl(CQRSMediator, QueryMediator):
     """
     Медиатор для запросов
     """
 
+    @override
     def get_base_request_handler_cls(
         self,
     ) -> Type[QueryHandler[TRequest, TResult]]:
         return QueryHandler
 
+    @override
     async def send(self, query: TRequest) -> TResult:
         result: TResult = await self.execute_request(req=query)
         return result
 
 
-class CommandMediator(CQRSMediator, CommandDispatcher):
+class CommandMediatorImpl(CQRSMediator, CommandMediator):
     """
     Медиатор для команд
     """
 
+    @override
     def get_base_request_handler_cls(
         self,
     ) -> Type[CommandHandler[TRequest, TResult]]:
         return CommandHandler
 
+    @override
     async def send(self, command: TRequest) -> TResult:
         result: TResult = await self.execute_request(req=command)
         return result

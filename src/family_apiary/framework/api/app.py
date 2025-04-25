@@ -10,6 +10,8 @@ from starlette.middleware.cors import CORSMiddleware
 
 from commons.api.exception_handlers import app_error_handler
 from commons.app_errors import AppError
+from commons.cqrs.base import CommandMediator, QueryMediator
+from commons.cqrs.impl import CommandMediatorImpl, QueryMediatorImpl
 from family_apiary.framework.containers import container
 
 # from .metrics import configure_prometheus_metrics_endpoint
@@ -33,6 +35,18 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """
     logger = logging.getLogger('FastAPI lifespan')
     logger.info('Lifespan loading...')
+
+    # находим и регистрируем все обработчики запросов
+    query_mediator: QueryMediatorImpl = await app.state.dishka_container.get(
+        QueryMediator
+    )
+    query_mediator.resolve_handlers()
+
+    # находим и регистрируем все обработчики команд
+    command_mediator: CommandMediatorImpl = (
+        await app.state.dishka_container.get(CommandMediator)
+    )
+    command_mediator.resolve_handlers()
 
     logger.info('Lifespan loaded')
     yield

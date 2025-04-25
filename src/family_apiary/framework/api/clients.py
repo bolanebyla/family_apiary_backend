@@ -12,7 +12,7 @@ from pydantic import BaseModel
 from starlette import status
 
 from commons.api.auth import JwtManager
-from commons.cqrs.impl import QueryMediator
+from commons.cqrs.impl import QueryMediatorImpl
 from commons.entities.base import EntityId
 
 
@@ -35,7 +35,7 @@ async def get_current_client(
     jwt_manager: Annotated[
         JwtManager, Depends(lambda: container.resolve(JwtManager))
     ],
-    query_mediator: Annotated[QueryMediator, Depends(get_query_mediator)],
+    query_mediator: Annotated[QueryMediatorImpl, Depends(get_query_mediator)],
 ) -> CurrentClient:
     """
     Получает текущего клиента
