@@ -63,6 +63,7 @@ def create_app(
     Создаёт инстанс fast api
     """
     app = FastAPI(
+        title='Family apiary',
         lifespan=lifespan,
         middleware=[
             # TODO: вынести CORS в настройки
