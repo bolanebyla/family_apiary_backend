@@ -9,7 +9,7 @@ from family_apiary.products.application.use_cases.interfaces import (
 @dataclass
 class CreateProductPurchaseRequestCommand:
     """
-    Команда на создание заявку на покупку продукции
+    Команда на создание заявки на покупку продукции
     """
 
     pass

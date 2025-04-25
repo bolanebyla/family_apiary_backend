@@ -2,7 +2,7 @@ import logging
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
-from dishka.integrations.fastapi import DishkaRoute, setup_dishka
+from dishka.integrations.fastapi import setup_dishka
 from fastapi import APIRouter, FastAPI
 from fastapi.responses import RedirectResponse
 from starlette.middleware import Middleware
@@ -76,8 +76,9 @@ def create_app(
         ],
         debug=True,  # settings.API_DEBUG_MODE, TODO:!!!
     )
+
     app.include_router(root_router)
-    api_router = APIRouter(prefix='/api', route_class=DishkaRoute)
+    api_router = APIRouter(prefix='/api')
 
     api_router.include_router(products_router)
 
