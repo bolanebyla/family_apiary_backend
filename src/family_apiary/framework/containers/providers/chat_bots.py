@@ -1,9 +1,9 @@
-from typing import AsyncIterable, Iterable
+from typing import AsyncIterable
 
 from aiogram import Bot
 from dishka import Provider, Scope, provide
 
-from family_apiary.products.application.use_cases.interfaces import (
+from family_apiary.products.application.interfaces import (
     ProductPurchaseRequestNotificator,
 )
 from family_apiary.products.infrastructure.tg_chat_bot import (

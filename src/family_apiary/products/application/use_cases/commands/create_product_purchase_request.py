@@ -9,7 +9,7 @@ from family_apiary.products.application.dto import (
     NewProductPurchaseRequestNotification,
     NewPurchaseRequestNotificationProduct,
 )
-from family_apiary.products.application.use_cases.interfaces import (
+from family_apiary.products.application.interfaces import (
     ProductPurchaseRequestNotificator,
 )
 
