@@ -2,6 +2,9 @@ from typing import override
 
 from aiogram import Bot
 
+from family_apiary.products.application.dto import (
+    NewProductPurchaseRequestNotification,
+)
 from family_apiary.products.application.use_cases.interfaces import (
     ProductPurchaseRequestNotificator,
 )
@@ -17,8 +20,53 @@ class ProductPurchaseRequestNotificatorImpl(ProductPurchaseRequestNotificator):
         self._notification_chat_id = notification_chat_id
 
     @override
-    async def send_new_request_notification(self) -> None:
+    async def send_new_request_notification(
+        self,
+        notification: NewProductPurchaseRequestNotification,
+    ) -> None:
+        notification_text = self._create_new_request_notification_text(
+            notification=notification,
+        )
         await self._bot.send_message(
             chat_id=self._notification_chat_id,
-            text='Hello, world!',
+            text=notification_text,
         )
+
+    def _create_new_request_notification_text(
+        self, notification: NewProductPurchaseRequestNotification
+    ) -> str:
+        """
+        Создаёт текст для уведомления о новой заявке о покупке продукции
+        """
+        text = (
+            'Заявка на покупку продукции\n\n'
+            f'Имя: {notification.name}\n'
+            f'Телефон: {notification.phone_number}'
+        )
+
+        if notification.products:
+            text = self._add_products_info_to_new_request_notification_text(
+                text=text,
+                notification=notification,
+            )
+
+        return text
+
+    def _add_products_info_to_new_request_notification_text(
+        self,
+        text: str,
+        notification: NewProductPurchaseRequestNotification,
+    ) -> str:
+        """
+        Добавляет в текст для уведомления о новой заявке о покупке продукции
+        информацию о продукции
+        """
+        text += '\n\nКорзина:\n'
+        for product in notification.products:
+            text += (
+                f'- {product.name}: {product.price} руб × {product.count} '
+                f'= {product.total_price} руб\n'
+            )
+
+        text += f'\nИтого: {notification.total_price} руб'
+        return text

@@ -32,6 +32,7 @@ async def submit_product_purchase_request(
                 description=req_product.description,
                 price=req_product.price,
                 category=req_product.category,
+                count=req_product.count,
             )
             for req_product in create_product_purchase_request.products
         ],

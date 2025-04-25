@@ -26,3 +26,7 @@ class CreateProductPurchaseRequest(BaseModel):
         description: str
         price: Decimal
         category: str
+        count: int = Field(
+            ...,
+            gt=1,
+        )

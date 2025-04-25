@@ -2,8 +2,13 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 
 from commons.cqrs.base import CommandHandler
+from commons.datetime_utils import now_tz
 from commons.entities.base import EntityId
 from commons.value_objects import PhoneNumber
+from family_apiary.products.application.dto import (
+    NewProductPurchaseRequestNotification,
+    NewPurchaseRequestNotificationProduct,
+)
 from family_apiary.products.application.use_cases.interfaces import (
     ProductPurchaseRequestNotificator,
 )
@@ -14,8 +19,9 @@ class CreateProductPurchaseRequestCommandProduct:
     id: EntityId
     name: str
     description: str
-    price: Decimal
     category: str
+    price: Decimal
+    count: int  # TODO: positive in
 
 
 @dataclass
@@ -53,4 +59,27 @@ class CreateProductPurchaseRequestHandler(
 
         # TODO: send notification
         print('Запрос получен')
-        await self._product_purchase_request_notificator.send_new_request_notification()
+
+        now = now_tz()
+
+        notification = NewProductPurchaseRequestNotification(
+            phone_number=command.phone_number,
+            name=command.name,
+            created_at=now,
+            total_price=1234,  # TODO: рассчитывать итоговую стоимость в сущности
+            products=[
+                NewPurchaseRequestNotificationProduct(
+                    name=command_product.name,
+                    description=command_product.description,
+                    price=command_product.price,
+                    total_price=command_product.price
+                    * command_product.count,  # TODO: вынести в сущность
+                    count=command_product.count,
+                )
+                for command_product in command.products
+            ],
+        )
+
+        await self._product_purchase_request_notificator.send_new_request_notification(
+            notification=notification,
+        )
