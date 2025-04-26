@@ -12,6 +12,13 @@ from commons.api.exception_handlers import app_error_handler
 from commons.app_errors import AppError
 from commons.cqrs.base import CommandMediator, QueryMediator
 from commons.cqrs.impl import CommandMediatorImpl, QueryMediatorImpl
+from family_apiary.framework.api.metrics import (
+    configure_prometheus_metrics_endpoint,
+)
+from family_apiary.framework.api.settings import (
+    ApiPrometheusMetricsSettings,
+    ApiSettings,
+)
 from family_apiary.framework.containers import container
 
 # from .metrics import configure_prometheus_metrics_endpoint
@@ -56,8 +63,8 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
 
 def create_app(
-    # settings: ApiSettings,
-    # api_prometheus_metrics_settings: ApiPrometheusMetricsSettings,
+    api_settings: ApiSettings,
+    api_prometheus_metrics_settings: ApiPrometheusMetricsSettings,
 ) -> FastAPI:
     """
     Создаёт инстанс fast api
@@ -75,7 +82,7 @@ def create_app(
                 allow_headers=['*'],
             )
         ],
-        debug=True,  # settings.API_DEBUG_MODE, TODO:!!!
+        debug=api_settings.API_DEBUG_MODE,
     )
 
     app.include_router(root_router)
@@ -87,10 +94,10 @@ def create_app(
 
     app.add_exception_handler(AppError, app_error_handler)
 
-    # configure_prometheus_metrics_endpoint(
-    #     app=app,
-    #     settings=api_prometheus_metrics_settings,
-    # )
+    configure_prometheus_metrics_endpoint(
+        app=app,
+        settings=api_prometheus_metrics_settings,
+    )
 
     setup_dishka(container=container, app=app)
 
