@@ -10,14 +10,12 @@ dependencies = [
     "fastapi==0.115.12",
     "prometheus-fastapi-instrumentator==7.1.0",
     "pydantic-settings==2.9.1",
-    "uvicorn==0.34.2",
+    "uvicorn[standard]==0.34.2",
 ]
 
 [dependency-groups]
 dev = [
     "pre-commit>=4.2.0",
-]
-lint = [
     "ruff>=0.11.6",
 ]
 
