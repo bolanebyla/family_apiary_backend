@@ -1,7 +1,7 @@
 from typing import AsyncIterable
 
 from aiogram import Bot
-from dishka import Provider, Scope, provide
+from dishka import Provider, Scope, from_context, provide
 
 from family_apiary.products.application.interfaces import (
     ProductPurchaseRequestNotificator,
@@ -14,6 +14,10 @@ from family_apiary.products.infrastructure.tg_chat_bot import (
 
 class TgChatBotProvider(Provider):
     scope = Scope.REQUEST
+
+    tg_chat_bot_settings = from_context(
+        provides=TgChatBotSettings, scope=Scope.APP
+    )
 
     @provide(scope=Scope.APP)
     async def create_tg_chat_bot(
