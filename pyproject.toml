@@ -8,7 +8,6 @@ dependencies = [
     "aiogram==3.20.0.post0",
     "dishka==1.5.3",
     "fastapi==0.115.12",
-    "gunicorn==23.0.0",
     "prometheus-fastapi-instrumentator==7.1.0",
     "pydantic-settings==2.9.1",
     "uvicorn==0.34.2",
