@@ -13,8 +13,6 @@ def configure_prometheus_metrics_endpoint(
     """
     Конфигурирует эндпоинт для сбора метрик
     """
-    # TODO: подумать над конфигурацией логов;
-    #  сейчас логи конфигурируются после инициализации метрик
     logger = logging.getLogger('configure_metrics_endpoint')
 
     if settings.PROMETHEUS_METRICS_ENABLED:
