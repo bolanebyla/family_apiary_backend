@@ -79,11 +79,22 @@ def async_operation(
     """
     Декоратор для выполнения тела метода класса в рамках операции.
 
-    Класс должен иметь поле _operation с типом Operation
+    Returns:
+        Декорированную функцию, которая будет выполняться
+        в контексте AsyncOperation.
+
+    Raises:
+        TypeError: Если декоратор используется не с методом класса.
+        AttributeError: Если у класса нет указанного атрибута.
+        TypeError: Если указанный атрибут не является инстансом AsyncOperation.
     """
 
-    # TODO: название аргумента с operation как параметр
-    operation_atr_name = '_operation'
+    # TODO: вынести в аргументы декоратора
+    #  Args:
+    #         operation_attr_name: Название атрибута класса,
+    #         в котором хранится инстанс AsyncOperation.
+    #         По умолчанию '_operation'.
+    operation_attr_name = '_operation'
 
     @wraps(method)
     async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
@@ -94,16 +105,16 @@ def async_operation(
             )
 
         self = args[0]
-        if not hasattr(self, operation_atr_name):
+        if not hasattr(self, operation_attr_name):
             raise AttributeError(
-                f'Class must have "{operation_atr_name}" attribute'
+                f'Class must have "{operation_attr_name}" attribute'
             )
 
-        operation = getattr(self, operation_atr_name)
+        operation = getattr(self, operation_attr_name)
 
         if not isinstance(operation, AsyncOperation):
             raise TypeError(
-                f'"{operation_atr_name}" must be an AsyncOperation instance'
+                f'"{operation_attr_name}" must be an AsyncOperation instance'
             )
 
         async with operation:
