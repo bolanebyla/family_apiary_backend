@@ -3,7 +3,7 @@ from typing import override
 from aiogram import Bot
 
 from family_apiary.products.application.dto import (
-    NewProductPurchaseRequestNotification,
+    NewPurchaseRequestNotification,
 )
 from family_apiary.products.application.interfaces import (
     ProductPurchaseRequestNotificator,
@@ -18,7 +18,7 @@ class _NewRequestNotificationMessageText:
 
     def __init__(
         self,
-        notification: NewProductPurchaseRequestNotification,
+        notification: NewPurchaseRequestNotification,
     ):
         self._notification = notification
 
@@ -79,7 +79,7 @@ class ProductPurchaseRequestNotificatorImpl(ProductPurchaseRequestNotificator):
     @override
     async def send_new_request_notification(
         self,
-        notification: NewProductPurchaseRequestNotification,
+        notification: NewPurchaseRequestNotification,
     ) -> None:
         notification_text = _NewRequestNotificationMessageText(
             notification=notification,

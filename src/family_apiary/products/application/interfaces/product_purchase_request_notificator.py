@@ -2,7 +2,7 @@ from abc import abstractmethod
 from typing import Protocol
 
 from family_apiary.products.application.dto import (
-    NewProductPurchaseRequestNotification,
+    NewPurchaseRequestNotification,
 )
 
 
@@ -14,7 +14,7 @@ class ProductPurchaseRequestNotificator(Protocol):
     @abstractmethod
     async def send_new_request_notification(
         self,
-        notification: NewProductPurchaseRequestNotification,
+        notification: NewPurchaseRequestNotification,
     ) -> None:
         """
         Отправляет уведомление о новой заявке на покупку продукции

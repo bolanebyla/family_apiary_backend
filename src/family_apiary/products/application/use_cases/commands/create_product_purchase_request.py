@@ -6,7 +6,7 @@ from commons.datetime_utils import now_tz
 from commons.entities.base import EntityId
 from commons.value_objects import PhoneNumber
 from family_apiary.products.application.dto import (
-    NewProductPurchaseRequestNotification,
+    NewPurchaseRequestNotification,
     NewPurchaseRequestNotificationProduct,
 )
 from family_apiary.products.application.interfaces import (
@@ -15,30 +15,30 @@ from family_apiary.products.application.interfaces import (
 
 
 @dataclass
-class CreateProductPurchaseRequestCommandProduct:
+class CreatePurchaseRequestCommandProduct:
     id: EntityId
     name: str
     description: str
     category: str
-    price: Decimal
-    count: int  # TODO: positive in
+    price: Decimal  # TODO: positive Decimal
+    count: int  # TODO: positive int
 
 
 @dataclass
-class CreateProductPurchaseRequestCommand:
+class CreatePurchaseRequestCommand:
     """
     Команда на создание заявки на покупку продукции
     """
 
     phone_number: PhoneNumber
     name: str
-    products: list[CreateProductPurchaseRequestCommandProduct] = field(
+    products: list[CreatePurchaseRequestCommandProduct] = field(
         default_factory=list,
     )
 
 
-class CreateProductPurchaseRequestHandler(
-    CommandHandler[CreateProductPurchaseRequestCommand, None]
+class CreatePurchaseRequestHandler(
+    CommandHandler[CreatePurchaseRequestCommand, None]
 ):
     """
     Создание заявку на покупку продукции
@@ -52,21 +52,18 @@ class CreateProductPurchaseRequestHandler(
             product_purchase_request_notificator
         )
 
-    async def handle(
-        self, command: CreateProductPurchaseRequestCommand
-    ) -> None:
+    async def handle(self, command: CreatePurchaseRequestCommand) -> None:
         # TODO: create and save
-
-        # TODO: send notification
-        print('Запрос получен')
 
         now = now_tz()
 
-        notification = NewProductPurchaseRequestNotification(
+        notification = NewPurchaseRequestNotification(
             phone_number=command.phone_number,
             name=command.name,
             created_at=now,
-            total_price=1234,  # TODO: рассчитывать итоговую стоимость в сущности
+            total_price=Decimal(
+                1234
+            ),  # TODO: рассчитывать итоговую стоимость в сущности
             products=[
                 NewPurchaseRequestNotificationProduct(
                     name=command_product.name,

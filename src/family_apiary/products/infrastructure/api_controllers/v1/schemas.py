@@ -5,18 +5,21 @@ from pydantic import BaseModel, Field
 from commons.entities.base import EntityId
 
 
-class CreateProductPurchaseRequest(BaseModel):
+class CreatePurchaseRequest(BaseModel):
     """
     Создание заявки на покупку продукции
     """
 
-    phone_number: str
+    phone_number: str = Field(
+        ...,
+        examples=['+79999999999'],
+    )
     name: str
-    products: list['CreateProductPurchaseRequestCommandProduct'] = Field(
+    products: list['CreatePurchaseRequestProduct'] = Field(
         default_factory=list,
     )
 
-    class CreateProductPurchaseRequestCommandProduct(BaseModel):
+    class CreatePurchaseRequestProduct(BaseModel):
         """
         Продукт из заявки на покупку
         """

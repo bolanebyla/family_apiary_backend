@@ -15,7 +15,7 @@ class NewPurchaseRequestNotificationProduct:
 
 
 @dataclass
-class NewProductPurchaseRequestNotification:
+class NewPurchaseRequestNotification:
     phone_number: PhoneNumber
     name: str
     created_at: datetime
