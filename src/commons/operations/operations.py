@@ -73,7 +73,6 @@ class AsyncOperation:
         return self._context_calls.get(0)
 
 
-# TODO: дописать докстринг
 def async_operation(
     method: Callable[P, Awaitable[T]],
 ) -> Callable[P, Awaitable[T]]:
@@ -83,13 +82,31 @@ def async_operation(
     Класс должен иметь поле _operation с типом Operation
     """
 
+    # TODO: название аргумента с operation как параметр
+    operation_atr_name = '_operation'
+
     @wraps(method)
     async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-        self = args[0]  # TODO: !проверить!
-        operation = getattr(  # noqa: B009
-            self, '_operation'
-        )  # TODO: вызывать ошибку, если его нет
-        async with operation:  # TODO: аргумент как параметр
+        if not args:
+            raise TypeError(
+                '"async_operation" decorator can only be used '
+                'with instance methods'
+            )
+
+        self = args[0]
+        if not hasattr(self, operation_atr_name):
+            raise AttributeError(
+                f'Class must have "{operation_atr_name}" attribute'
+            )
+
+        operation = getattr(self, operation_atr_name)
+
+        if not isinstance(operation, AsyncOperation):
+            raise TypeError(
+                f'"{operation_atr_name}" must be an AsyncOperation instance'
+            )
+
+        async with operation:
             return await method(*args, **kwargs)
 
     return wrapper
