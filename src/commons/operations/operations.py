@@ -66,7 +66,7 @@ class AsyncOperation:
         exit_stack = self._context_exit_stack.get()
         # TODO: try
         await exit_stack.__aexit__(exc_type, exc_val, traceback)
-        print('current_task AsyncOperation', current_task())
+
         return None
 
     def _get_calls_count(self) -> int:
