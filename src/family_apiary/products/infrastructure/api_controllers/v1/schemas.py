@@ -24,7 +24,10 @@ class CreateProductPurchaseRequest(BaseModel):
         id: EntityId
         name: str
         description: str
-        price: Decimal
+        price: Decimal = Field(
+            ...,
+            gt=1,
+        )
         category: str
         count: int = Field(
             ...,
