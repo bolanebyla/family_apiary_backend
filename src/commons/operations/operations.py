@@ -1,4 +1,3 @@
-from asyncio import current_task
 from contextlib import AsyncExitStack
 from contextvars import ContextVar
 from functools import wraps
@@ -46,7 +45,6 @@ class AsyncOperation:
                 for context in self._context_managers:
                     await exit_stack.enter_async_context(context)
             except Exception as exc:
-                # TODO: ещё один try
                 await exit_stack.__aexit__(type(exc), exc, exc.__traceback__)
 
         self._context_calls.set(calls_count + 1)
@@ -64,7 +62,6 @@ class AsyncOperation:
             return False
 
         exit_stack = self._context_exit_stack.get()
-        # TODO: try
         await exit_stack.__aexit__(exc_type, exc_val, traceback)
 
         return None
