@@ -76,7 +76,6 @@ class ProductPurchaseRequestNotificatorImpl(ProductPurchaseRequestNotificator):
         self._bot = bot
         self._notification_chat_id = notification_chat_id
 
-    @override
     async def send_new_request_notification(
         self,
         notification: NewPurchaseRequestNotification,
