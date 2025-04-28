@@ -2,8 +2,6 @@ from decimal import Decimal
 
 from pydantic import BaseModel, Field
 
-from commons.entities.base import EntityId
-
 
 class CreatePurchaseRequest(BaseModel):
     """
@@ -24,15 +22,14 @@ class CreatePurchaseRequest(BaseModel):
         Продукт из заявки на покупку
         """
 
-        id: EntityId
         name: str
         description: str
         price: Decimal = Field(
             ...,
-            gt=1,
+            ge=1,
         )
         category: str
         count: int = Field(
             ...,
-            gt=1,
+            ge=1,
         )

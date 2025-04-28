@@ -27,7 +27,6 @@ async def submit_purchase_request(
         name=create_purchase_request.name,
         products=[
             CreatePurchaseRequestCommandProduct(
-                id=req_product.id,
                 name=req_product.name,
                 description=req_product.description,
                 price=req_product.price,

@@ -3,7 +3,6 @@ from decimal import Decimal
 
 from commons.cqrs.base import CommandHandler
 from commons.datetime_utils import now_tz
-from commons.entities.base import EntityId
 from commons.value_objects import PhoneNumber
 from family_apiary.products.application.dto import (
     NewPurchaseRequestNotification,
@@ -16,7 +15,6 @@ from family_apiary.products.application.interfaces import (
 
 @dataclass
 class CreatePurchaseRequestCommandProduct:
-    id: EntityId
     name: str
     description: str
     category: str
