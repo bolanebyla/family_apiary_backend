@@ -71,14 +71,26 @@ class AsyncOperation:
 
 
 def async_operation(
-    method: Callable[P, Awaitable[T]],
-) -> Callable[P, Awaitable[T]]:
+    method: Callable[P, Awaitable[T]] | None = None,
+    operation_attr_name: str = '_operation',
+) -> (
+    Callable[P, Awaitable[T]]
+    | Callable[[Callable[P, Awaitable[T]]], Callable[P, Awaitable[T]]]
+):
     """
     Декоратор для выполнения тела метода класса в рамках операции.
 
+    Args:
+        method: Декорируемый метод. Если None, то возвращается функция-декоратор
+            (необходимо для того чтобы декоратор можно было использовать
+            как с аргументами, так и без).
+        operation_attr_name: Название атрибута класса,
+            в котором хранится инстанс AsyncOperation.
+            По умолчанию '_operation'.
+
     Returns:
         Декорированную функцию, которая будет выполняться
-        в контексте AsyncOperation.
+            в контексте AsyncOperation.
 
     Raises:
         TypeError: Если декоратор используется не с методом класса.
@@ -86,35 +98,36 @@ def async_operation(
         TypeError: Если указанный атрибут не является инстансом AsyncOperation.
     """
 
-    # TODO: вынести в аргументы декоратора
-    #  Args:
-    #         operation_attr_name: Название атрибута класса,
-    #         в котором хранится инстанс AsyncOperation.
-    #         По умолчанию '_operation'.
-    operation_attr_name = '_operation'
+    def decorator(
+        method: Callable[P, Awaitable[T]],
+    ) -> Callable[P, Awaitable[T]]:
+        @wraps(method)
+        async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
+            if not args:
+                raise TypeError(
+                    '"async_operation" decorator can only be used '
+                    'with instance methods'
+                )
 
-    @wraps(method)
-    async def wrapper(*args: P.args, **kwargs: P.kwargs) -> T:
-        if not args:
-            raise TypeError(
-                '"async_operation" decorator can only be used '
-                'with instance methods'
-            )
+            self = args[0]
+            if not hasattr(self, operation_attr_name):
+                raise AttributeError(
+                    f'Class must have "{operation_attr_name}" '
+                    f'attribute (the AsyncOperation instance)'
+                )
 
-        self = args[0]
-        if not hasattr(self, operation_attr_name):
-            raise AttributeError(
-                f'Class must have "{operation_attr_name}" attribute'
-            )
+            operation = getattr(self, operation_attr_name)
 
-        operation = getattr(self, operation_attr_name)
+            if not isinstance(operation, AsyncOperation):
+                raise TypeError(
+                    f'"{operation_attr_name}" must be an AsyncOperation instance'
+                )
 
-        if not isinstance(operation, AsyncOperation):
-            raise TypeError(
-                f'"{operation_attr_name}" must be an AsyncOperation instance'
-            )
+            async with operation:
+                return await method(*args, **kwargs)
 
-        async with operation:
-            return await method(*args, **kwargs)
+        return wrapper
 
-    return wrapper
+    if method is None:
+        return decorator
+    return decorator(method)
