@@ -10,13 +10,13 @@ class PhoneNumberInvalid(AppError):
 class PhoneNumber(str):
     phone_number_pattern_regex = r'^(\+)[1-9][0-9\-\(\)\.]{9,18}$'
 
-    def __new__(cls, value):
+    def __new__(cls, value: str) -> 'PhoneNumber':
         obj = str.__new__(cls, value)
         cls.validate(obj)
         return obj
 
     @staticmethod
-    def validate(value: str):
+    def validate(value: str) -> None:
         """
         Проверяет соответствие строки паттерну номера телефона
 
