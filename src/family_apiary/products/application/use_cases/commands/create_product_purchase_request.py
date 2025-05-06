@@ -3,7 +3,7 @@ from decimal import Decimal
 
 from commons.cqrs.base import CommandHandler
 from commons.datetime_utils import now_tz
-from commons.value_objects import PhoneNumber
+from commons.value_objects import MoneyDecimal, PhoneNumber, PositiveInt
 from family_apiary.products.application.dto import (
     NewPurchaseRequestNotification,
     NewPurchaseRequestNotificationProduct,
@@ -18,8 +18,8 @@ class CreatePurchaseRequestCommandProduct:
     name: str
     description: str
     category: str
-    price: Decimal  # TODO: positive Decimal
-    count: int  # TODO: positive int
+    price: MoneyDecimal
+    count: PositiveInt
 
 
 @dataclass
