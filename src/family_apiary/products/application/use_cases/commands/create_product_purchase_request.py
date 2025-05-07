@@ -1,8 +1,8 @@
 from dataclasses import dataclass, field
-from decimal import Decimal
 
 from commons.cqrs.base import CommandHandler
 from commons.datetime_utils import now_tz
+from commons.entities.base import create_entity_id
 from commons.value_objects import MoneyDecimal, PhoneNumber, PositiveInt
 from family_apiary.products.application.dto import (
     NewPurchaseRequestNotification,
@@ -10,6 +10,10 @@ from family_apiary.products.application.dto import (
 )
 from family_apiary.products.application.interfaces import (
     ProductPurchaseRequestNotificator,
+)
+from family_apiary.products.domain.entities import (
+    PurchaseRequest,
+    PurchaseRequestProduct,
 )
 
 
@@ -55,23 +59,40 @@ class CreatePurchaseRequestHandler(
 
         now = now_tz()
 
-        notification = NewPurchaseRequestNotification(
-            phone_number=command.phone_number,
-            name=command.name,
+        purchase_request = PurchaseRequest(
+            id=create_entity_id(),
             created_at=now,
-            total_price=Decimal(
-                1234
-            ),  # TODO: рассчитывать итоговую стоимость в сущности
+            updated_at=now,
+            name=command.name,
+            phone_number=command.phone_number,
             products=[
-                NewPurchaseRequestNotificationProduct(
+                PurchaseRequestProduct(
+                    id=create_entity_id(),
+                    created_at=now,
+                    updated_at=now,
                     name=command_product.name,
                     description=command_product.description,
                     price=command_product.price,
-                    total_price=command_product.price
-                    * command_product.count,  # TODO: вынести в сущность
                     count=command_product.count,
                 )
                 for command_product in command.products
+            ],
+        )
+
+        notification = NewPurchaseRequestNotification(
+            phone_number=purchase_request.phone_number,
+            name=purchase_request.name,
+            created_at=now,
+            total_price=purchase_request.get_total_price(),
+            products=[
+                NewPurchaseRequestNotificationProduct(
+                    name=purchase_request_product.name,
+                    description=purchase_request_product.description,
+                    price=purchase_request_product.price,
+                    total_price=purchase_request_product.get_total_price(),
+                    count=purchase_request_product.count,
+                )
+                for purchase_request_product in purchase_request.products
             ],
         )
 
