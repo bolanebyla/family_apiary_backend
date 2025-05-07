@@ -17,14 +17,14 @@ purchase_requests_router = APIRouter(
 )
 
 
-@purchase_requests_router.post('/submit')
-async def submit_purchase_request(
-    create_purchase_request: CreatePurchaseRequest,
+@purchase_requests_router.post('/create')
+async def create_purchase_request(
+    create_purchase_request_model: CreatePurchaseRequest,
     command_mediator: FromDishka[CommandMediator],
 ) -> None:
     command = CreatePurchaseRequestCommand(
-        phone_number=PhoneNumber(create_purchase_request.phone_number),
-        name=create_purchase_request.name,
+        phone_number=PhoneNumber(create_purchase_request_model.phone_number),
+        name=create_purchase_request_model.name,
         products=[
             CreatePurchaseRequestCommandProduct(
                 name=req_product.name,
@@ -33,7 +33,7 @@ async def submit_purchase_request(
                 category=req_product.category,
                 count=PositiveInt(req_product.count),
             )
-            for req_product in create_purchase_request.products
+            for req_product in create_purchase_request_model.products
         ],
     )
     await command_mediator.send(command=command)
