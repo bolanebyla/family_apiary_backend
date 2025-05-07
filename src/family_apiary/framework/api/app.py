@@ -2,6 +2,7 @@ import logging
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 
+from dishka import AsyncContainer
 from dishka.integrations.fastapi import setup_dishka
 from fastapi import APIRouter, FastAPI
 from fastapi.responses import RedirectResponse
@@ -19,7 +20,6 @@ from family_apiary.framework.api.settings import (
     ApiPrometheusMetricsSettings,
     ApiSettings,
 )
-from family_apiary.framework.containers import container
 
 # from .metrics import configure_prometheus_metrics_endpoint
 from family_apiary.products.infrastructure.api_controllers import (
@@ -64,6 +64,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
 
 def create_app(
     api_settings: ApiSettings,
+    container: AsyncContainer,
     api_prometheus_metrics_settings: ApiPrometheusMetricsSettings,
 ) -> FastAPI:
     """
