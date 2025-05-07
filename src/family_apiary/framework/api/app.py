@@ -20,17 +20,9 @@ from family_apiary.framework.api.settings import (
     ApiPrometheusMetricsSettings,
     ApiSettings,
 )
-
-# from .metrics import configure_prometheus_metrics_endpoint
 from family_apiary.products.infrastructure.api_controllers import (
     products_router,
 )
-
-# from family_apiary.framework.api.settings import (
-#     ApiPrometheusMetricsSettings,
-#     ApiSettings,
-# )
-
 
 root_router = APIRouter()
 
