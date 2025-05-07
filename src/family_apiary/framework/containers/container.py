@@ -1,4 +1,4 @@
-from dishka import make_async_container
+from dishka import AsyncContainer, make_async_container
 
 from family_apiary.framework.api.settings import (
     ApiPrometheusMetricsSettings,
@@ -18,7 +18,7 @@ def create_api_container(
     api_settings: ApiSettings,
     api_prometheus_metrics_settings: ApiPrometheusMetricsSettings,
     tg_chat_bot_settings: TgChatBotSettings,
-):
+) -> AsyncContainer:
     container = make_async_container(
         TgChatBotProvider(),
         CommandHandlersProvider(),
