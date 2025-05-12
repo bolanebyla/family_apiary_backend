@@ -15,6 +15,7 @@ from family_apiary.products.domain.entities import (
     PurchaseRequest,
     PurchaseRequestProduct,
 )
+from family_apiary.products.domain.repositories import PurchaseRequestRepo
 
 
 @dataclass
@@ -48,15 +49,15 @@ class CreatePurchaseRequestHandler(
 
     def __init__(
         self,
+        purchase_request_repo: PurchaseRequestRepo,
         product_purchase_request_notificator: ProductPurchaseRequestNotificator,
     ):
+        self._purchase_request_repo = purchase_request_repo
         self._product_purchase_request_notificator = (
             product_purchase_request_notificator
         )
 
     async def handle(self, command: CreatePurchaseRequestCommand) -> None:
-        # TODO: create and save
-
         now = now_tz()
 
         purchase_request = PurchaseRequest(
@@ -74,10 +75,13 @@ class CreatePurchaseRequestHandler(
                     description=command_product.description,
                     price=command_product.price,
                     count=command_product.count,
+                    category=command_product.category,
                 )
                 for command_product in command.products
             ],
         )
+
+        await self._purchase_request_repo.add(purchase_request)
 
         notification = NewPurchaseRequestNotification(
             phone_number=purchase_request.phone_number,
