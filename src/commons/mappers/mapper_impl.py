@@ -16,7 +16,7 @@ class MapperImpl(Mapper[C, T, R]):
         self._init_mapper(mapper_config=mapper_config)
 
     @staticmethod
-    def _init_mapper(mapper_config: MapperConfig[Type, Type]):
+    def _init_mapper(mapper_config: MapperConfig[Type, Type]) -> None:
         fields_mapping = (
             mapper_config.field_mappings | mapper_config.computed_fields
         )
@@ -29,7 +29,7 @@ class MapperImpl(Mapper[C, T, R]):
     def map(
         self,
         source: T,
-        extra: dict[str, Any] = None,
+        extra: dict[str, Any] | None = None,
     ) -> R:
         return map_to(
             obj=source,
@@ -40,7 +40,7 @@ class MapperImpl(Mapper[C, T, R]):
     def map_many(
         self,
         sources: Iterable[T],
-        extra: dict[str, Any] = None,
+        extra: dict[str, Any] | None = None,
     ) -> list[R]:
         return [self.map(source, extra) for source in sources]
 

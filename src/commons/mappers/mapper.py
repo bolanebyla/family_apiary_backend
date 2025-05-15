@@ -19,7 +19,7 @@ class MapperConfig(Protocol[T, R]):
     nested_mappers: list['MapperConfig[Type, Type]'] | None = None
     """Словарь вложенных мапперов для сложных полей (тип поля -> маппер)"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.field_mappings = self.field_mappings or {}
         self.computed_fields = self.computed_fields or {}
         self.nested_mappers = self.nested_mappers or []
@@ -29,9 +29,9 @@ class Mapper(Generic[C, T, R]):
     config: C
 
     @abstractmethod
-    def map(self, source: T, extra: dict[str, Any] = None) -> R: ...
+    def map(self, source: T, extra: dict[str, Any] | None = None) -> R: ...
 
     @abstractmethod
     def map_many(
-        self, sources: Iterable[T], extra: dict[str, Any] = None
+        self, sources: Iterable[T], extra: dict[str, Any] | None = None
     ) -> Iterable[R]: ...
