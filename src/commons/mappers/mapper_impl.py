@@ -14,12 +14,20 @@ class DataclassInstance(Protocol):
 
 FieldsMapping = dict[str, str | ComputedField | FromExtra]
 
+MAPPER_ALREADY_EXISTS_ERROR_MESSAGE = 'There already exists a mapping'
+
 
 class MapperImpl(Mapper[C, T, R]):
     def __init__(self, mapper_config: MapperConfig[T, R]):
         self.mapper_config = mapper_config
 
-        self._init_mapper(mapper_config=mapper_config)
+        try:
+            self._init_mapper(mapper_config=mapper_config)
+        except AttributeError as e:
+            if e.args and MAPPER_ALREADY_EXISTS_ERROR_MESSAGE in e.args[0]:
+                pass
+            else:
+                raise
 
     def _init_mapper(
         self,
@@ -149,34 +157,32 @@ if __name__ == '__main__':
         # friends: list['Contact'] TODO:
         comments: list[ContactComment]
 
-    class ContactCommentSourceMapperConfig(
-        MapperConfig[CommentSource, ContactCommentSource]
-    ):
-        source_type = CommentSource
-        target_type = ContactCommentSource
+    contact_comment_source_mapper_config = MapperConfig(
+        source_type=CommentSource,
+        target_type=ContactCommentSource,
+    )
 
-    class ContactCommentMapperConfig(MapperConfig[Comment, ContactComment]):
-        source_type = Comment
-        target_type = ContactComment
+    contact_comment_mapper_config = MapperConfig(
+        source_type=Comment,
+        target_type=ContactComment,
+        nested_mappers=[contact_comment_source_mapper_config],
+    )
 
-        nested_mappers = [ContactCommentSourceMapperConfig()]
+    contact_address_mapper_config = MapperConfig(
+        source_type=Address,
+        target_type=ContactAddress,
+    )
 
-    class ContactAddressMapperConfig(MapperConfig[Address, ContactAddress]):
-        source_type = Address
-        target_type = ContactAddress
-
-    class ContactMapperConfig(MapperConfig[Person, Contact]):
-        source_type = Person
-        target_type = Contact
-
-        field_mappings = {'title': 'name'}
-        computed_fields = {'slug': lambda source: f'{source.id}_{source.name}'}
-        nested_mappers = [
-            ContactAddressMapperConfig(),
-            ContactCommentMapperConfig(),
-        ]
-
-    contact_mapper_config = ContactMapperConfig()
+    contact_mapper_config = MapperConfig(
+        source_type=Person,
+        target_type=Contact,
+        field_mappings={'title': 'name'},
+        computed_fields={'slug': lambda source: f'{source.id}_{source.name}'},
+        nested_mappers=[
+            contact_address_mapper_config,
+            contact_comment_mapper_config,
+        ],
+    )
     contact_mapper = MapperImpl(mapper_config=contact_mapper_config)
 
     person = Person(

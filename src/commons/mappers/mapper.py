@@ -1,4 +1,5 @@
 from abc import abstractmethod
+from dataclasses import dataclass, field
 from typing import Any, Callable, Generic, Iterable, Protocol, Type, TypeVar
 
 T = TypeVar('T')
@@ -9,23 +10,21 @@ C = TypeVar('C', bound='MapperConfig')
 ComputedField = Callable[[Any], Any]
 
 
-class MapperConfig(Protocol[T, R]):
+@dataclass(frozen=True)
+class MapperConfig(Generic[T, R]):
     source_type: Type[T]
     target_type: Type[R]
 
-    field_mappings: dict[str, str] | None = None
-    """Словарь соответствия полей (исходное_поле -> целевое_поле)"""
+    field_mappings: dict[str, str] = field(default_factory=dict)
+    """Соответствие названий полей (название_целевого_поля -> название_исходного_поля)"""
 
-    computed_fields: dict[str, ComputedField] | None = None
-    """Словарь вычисляемых полей (поле -> функция_вычисления)"""
+    computed_fields: dict[str, ComputedField] = field(default_factory=dict)
+    """Вычисляемые поля (название_целевого_поля -> функция_вычисления)"""
 
-    nested_mappers: list['MapperConfig[Type[Any], Type[Any]]'] | None = None
-    """Словарь вложенных мапперов для сложных полей (тип поля -> маппер)"""
-
-    def __init__(self) -> None:
-        self.field_mappings = self.field_mappings or {}
-        self.computed_fields = self.computed_fields or {}
-        self.nested_mappers = self.nested_mappers or []
+    nested_mappers: list['MapperConfig[Type[Any], Type[Any]]'] = field(
+        default_factory=list
+    )
+    """Конфиги мапперов для вложенных классов"""
 
 
 class Mapper(Generic[C, T, R]):
