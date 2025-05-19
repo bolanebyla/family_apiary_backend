@@ -7,7 +7,7 @@ R = TypeVar('R')
 C = TypeVar('C', bound='MapperConfig')
 
 
-ComputedField = Callable[[Any], Any]
+ComputedField = Callable[[Any], Any]  # TODO: добавить более строгое описание
 
 
 @dataclass(frozen=True)

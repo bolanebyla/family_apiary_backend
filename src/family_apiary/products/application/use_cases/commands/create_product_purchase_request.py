@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from commons.cqrs.base import CommandHandler
 from commons.datetime_utils import now_tz
 from commons.entities.base import create_entity_id
+from commons.mappers import Mapper, MapperConfig
 from commons.value_objects import MoneyDecimal, PhoneNumber, PositiveInt
 from family_apiary.products.application.dto import (
     NewPurchaseRequestNotification,
@@ -40,19 +41,47 @@ class CreatePurchaseRequestCommand:
     )
 
 
+create_purchase_request_command_product_mapper_config = MapperConfig(
+    source_type=CreatePurchaseRequestCommandProduct,
+    target_type=PurchaseRequestProduct,
+    computed_fields={
+        'id': lambda value: create_entity_id(),
+    },
+)
+
+create_purchase_request_command_to_purchase_request_mapper_config = (
+    MapperConfig(
+        source_type=CreatePurchaseRequestCommand,
+        target_type=PurchaseRequest,
+        computed_fields={
+            'id': lambda value: create_entity_id(),
+        },
+        nested_mappers=[
+            create_purchase_request_command_product_mapper_config,
+        ],
+    )
+)
+
+
 class CreatePurchaseRequestHandler(
     CommandHandler[CreatePurchaseRequestCommand, None]
 ):
     """
-    Создание заявку на покупку продукции
+    Создание заявки на покупку продукции
     """
 
     def __init__(
         self,
         purchase_request_repo: PurchaseRequestRepo,
+        purchase_request_mapper: Mapper[
+            MapperConfig[CreatePurchaseRequestCommand, PurchaseRequest],
+            CreatePurchaseRequestCommand,
+            PurchaseRequest,
+        ],
         product_purchase_request_notificator: ProductPurchaseRequestNotificator,
     ):
         self._purchase_request_repo = purchase_request_repo
+        self._purchase_request_mapper = purchase_request_mapper
         self._product_purchase_request_notificator = (
             product_purchase_request_notificator
         )
@@ -60,25 +89,12 @@ class CreatePurchaseRequestHandler(
     async def handle(self, command: CreatePurchaseRequestCommand) -> None:
         now = now_tz()
 
-        purchase_request = PurchaseRequest(
-            id=create_entity_id(),
-            created_at=now,
-            updated_at=now,
-            name=command.name,
-            phone_number=command.phone_number,
-            products=[
-                PurchaseRequestProduct(
-                    id=create_entity_id(),
-                    created_at=now,
-                    updated_at=now,
-                    name=command_product.name,
-                    description=command_product.description,
-                    price=command_product.price,
-                    count=command_product.count,
-                    category=command_product.category,
-                )
-                for command_product in command.products
-            ],
+        purchase_request = self._purchase_request_mapper.map(
+            source=command,
+            extra={
+                'created_at': now,
+                'updated_at': now,
+            },
         )
 
         await self._purchase_request_repo.add(purchase_request)

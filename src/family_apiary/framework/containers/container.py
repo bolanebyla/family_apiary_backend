@@ -9,6 +9,7 @@ from family_apiary.products.infrastructure.tg_chat_bot import TgChatBotSettings
 from .providers import (
     CommandHandlersProvider,
     DBRepositoriesProvider,
+    MapperProvider,
     MediatorProvider,
     OperationsProvider,
     TgChatBotProvider,
@@ -26,6 +27,7 @@ def create_api_container(
         MediatorProvider(),
         OperationsProvider(),
         DBRepositoriesProvider(),
+        MapperProvider(),
         context={
             ApiSettings: api_settings,
             ApiPrometheusMetricsSettings: api_prometheus_metrics_settings,
