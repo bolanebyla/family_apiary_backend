@@ -28,8 +28,6 @@ class MapperConfig(Generic[T, R]):
 
 
 class Mapper(Generic[C, T, R]):
-    config: C
-
     @abstractmethod
     def map(self, source: T, extra: dict[str, Any] | None = None) -> R: ...
 
