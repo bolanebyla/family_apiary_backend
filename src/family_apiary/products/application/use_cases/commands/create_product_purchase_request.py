@@ -56,7 +56,7 @@ create_purchase_request_command_to_purchase_request_mapper_config = (
         computed_fields={
             'id': lambda value: create_entity_id(),
         },
-        nested_mappers=[
+        nested_mapper_configs=[
             create_purchase_request_command_product_mapper_config,
         ],
     )

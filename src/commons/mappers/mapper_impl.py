@@ -1,18 +1,40 @@
-from dataclasses import Field, dataclass, fields
+from dataclasses import dataclass, fields, is_dataclass
 from datetime import datetime
-from typing import Any, ClassVar, Iterable, Protocol, Type
+from inspect import isclass
+from typing import Any, Callable, Iterable, Type, cast
 
 from dataclass_mapper import create_mapper, from_extra, map_to
-from dataclass_mapper.special_field_mappings import FromExtra
+from dataclass_mapper.implementations.sqlalchemy import InstrumentedAttribute
+from dataclass_mapper.special_field_mappings import (
+    AssumeNotNone,
+    FromExtra,
+    Ignore,
+    Spezial,
+    UpdateOnlyIfSet,
+)
+from pydantic import BaseModel
 
-from commons.mappers.mapper import C, ComputedField, Mapper, MapperConfig, R, T
+from commons.mappers.mapper import (
+    C,
+    ComputedField,
+    Mapper,
+    MapperConfig,
+    R,
+    T,
+)
 
-
-class DataclassInstance(Protocol):
-    __dataclass_fields__: ClassVar[dict[str, Field[Any]]]
-
-
-FieldsMapping = dict[str, str | ComputedField | FromExtra]
+ExpectedMapping = dict[
+    str | InstrumentedAttribute,
+    str
+    | Callable[[], Any]
+    | Callable[[Any], Any]
+    | Ignore
+    | AssumeNotNone
+    | FromExtra
+    | UpdateOnlyIfSet
+    | Spezial
+    | InstrumentedAttribute,
+]
 
 MAPPER_ALREADY_EXISTS_ERROR_MESSAGE = 'There already exists a mapping'
 
@@ -21,34 +43,44 @@ class MapperImpl(Mapper[C, T, R]):
     def __init__(self, mapper_config: MapperConfig[T, R]):
         self.mapper_config = mapper_config
 
+        self._init_mapper(mapper_config=mapper_config)
+
+    def _init_mapper(
+        self,
+        mapper_config: MapperConfig[Type, Type],
+    ) -> None:
         try:
-            self._init_mapper(mapper_config=mapper_config)
+            self._init_nested_mapper_configs(
+                nested_mapper_configs=mapper_config.nested_mapper_configs,
+            )
+
+            fields_mapping = self._create_fields_mapping(mapper_config)
+            # Приводим к ожидаемому типу,
+            # так как мы знаем, что наши типы совместимы
+            expected_mapping = cast(ExpectedMapping, fields_mapping)
+
+            create_mapper(
+                SourceCls=mapper_config.source_type,
+                TargetCls=mapper_config.target_type,
+                mapping=expected_mapping,
+            )
         except AttributeError as e:
             if e.args and MAPPER_ALREADY_EXISTS_ERROR_MESSAGE in e.args[0]:
                 pass
             else:
                 raise
 
-    def _init_mapper(
-        self,
-        mapper_config: MapperConfig[DataclassInstance, DataclassInstance],
+    def _init_nested_mapper_configs(
+        self, nested_mapper_configs: list[MapperConfig[Any, Any]]
     ) -> None:
-        for nested_mapper_config in mapper_config.nested_mappers:
+        for nested_mapper_config in nested_mapper_configs:
             self._init_mapper(mapper_config=nested_mapper_config)
-
-        fields_mapping = self._create_fields_mapping(mapper_config)
-
-        create_mapper(
-            SourceCls=mapper_config.source_type,
-            TargetCls=mapper_config.target_type,
-            mapping=fields_mapping,
-        )
 
     def _create_fields_mapping(
         self,
-        mapper_config: MapperConfig[DataclassInstance, DataclassInstance],
-    ) -> FieldsMapping:
-        fields_mapping = (
+        mapper_config: MapperConfig[Type, Type],
+    ) -> dict[str, str | ComputedField | FromExtra]:
+        fields_mapping: dict[str, str | ComputedField] = (
             mapper_config.field_mappings | mapper_config.computed_fields
         )
 
@@ -64,7 +96,7 @@ class MapperImpl(Mapper[C, T, R]):
 
     def _get_extra_field_names(
         self,
-        mapper_config: MapperConfig[DataclassInstance, DataclassInstance],
+        mapper_config: MapperConfig[Type, Type],
         fields_mapping: dict[str, str | ComputedField],
     ) -> list[str]:
         source_type_fields = self._get_fields(mapper_config.source_type)
@@ -78,8 +110,13 @@ class MapperImpl(Mapper[C, T, R]):
         return extra_field_names
 
     @staticmethod
-    def _get_fields(cls: Type[DataclassInstance]) -> list[str]:
-        return [f.name for f in fields(cls)]
+    def _get_fields(cls: Type[Any]) -> list[str]:
+        if is_dataclass(cls):
+            return [f.name for f in fields(cls)]
+        elif isclass(cls) and issubclass(cls, BaseModel):
+            return list(cls.__annotations__.keys())
+        else:
+            raise TypeError(f'The mapper does not work with the "{cls}" type')
 
     @staticmethod
     def _create_extra_fields_mapping(
@@ -165,7 +202,7 @@ if __name__ == '__main__':
     contact_comment_mapper_config = MapperConfig(
         source_type=Comment,
         target_type=ContactComment,
-        nested_mappers=[contact_comment_source_mapper_config],
+        nested_mapper_configs=[contact_comment_source_mapper_config],
     )
 
     contact_address_mapper_config = MapperConfig(
@@ -178,7 +215,7 @@ if __name__ == '__main__':
         target_type=Contact,
         field_mappings={'title': 'name'},
         computed_fields={'slug': lambda source: f'{source.id}_{source.name}'},
-        nested_mappers=[
+        nested_mapper_configs=[
             contact_address_mapper_config,
             contact_comment_mapper_config,
         ],
@@ -211,3 +248,28 @@ if __name__ == '__main__':
 
     contact = contact_mapper.map(person, extra={'created_at': datetime.now()})
     print(contact)
+
+    @dataclass
+    class Car:
+        id: int
+        color: str
+
+    class CarInfo(BaseModel):
+        color: str
+
+    car_to_car_info_mapper_config = MapperConfig(
+        source_type=Car,
+        target_type=CarInfo,
+    )
+
+    car_to_car_info_mapper = MapperImpl(
+        mapper_config=car_to_car_info_mapper_config,
+    )
+
+    car = Car(
+        id=1,
+        color='red',
+    )
+
+    car_info = car_to_car_info_mapper.map(car)
+    print(car_info)

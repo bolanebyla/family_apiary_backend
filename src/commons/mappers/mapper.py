@@ -4,10 +4,10 @@ from typing import Any, Callable, Generic, Iterable, Protocol, Type, TypeVar
 
 T = TypeVar('T')
 R = TypeVar('R')
-C = TypeVar('C', bound='MapperConfig')
+C = TypeVar('C', bound='MapperConfig[Any, Any]')
 
 
-ComputedField = Callable[[Any], Any]  # TODO: добавить более строгое описание
+ComputedField = Callable[[Any], Any]
 
 
 @dataclass(frozen=True)
@@ -21,7 +21,7 @@ class MapperConfig(Generic[T, R]):
     computed_fields: dict[str, ComputedField] = field(default_factory=dict)
     """Вычисляемые поля (название_целевого_поля -> функция_вычисления)"""
 
-    nested_mappers: list['MapperConfig[Type[Any], Type[Any]]'] = field(
+    nested_mapper_configs: list['MapperConfig[Any, Any]'] = field(
         default_factory=list
     )
     """Конфиги мапперов для вложенных классов"""
