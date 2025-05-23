@@ -1,6 +1,6 @@
 from abc import abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Callable, Generic, Iterable, Protocol, Type, TypeVar
+from typing import Any, Callable, Generic, Iterable, Type, TypeVar
 
 T = TypeVar('T')
 R = TypeVar('R')

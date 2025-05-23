@@ -54,12 +54,31 @@ create_purchase_request_command_to_purchase_request_mapper_config = (
         source_type=CreatePurchaseRequestCommand,
         target_type=PurchaseRequest,
         computed_fields={
-            'id': lambda value: create_entity_id(),
+            'id': lambda source: create_entity_id(),
         },
         nested_mapper_configs=[
             create_purchase_request_command_product_mapper_config,
         ],
     )
+)
+
+purchase_request_product_to_new_purchase_request_notification_product_mapper_config = MapperConfig(
+    source_type=PurchaseRequestProduct,
+    target_type=NewPurchaseRequestNotificationProduct,
+    computed_fields={
+        'total_price': lambda source: source.get_total_price(),
+    },
+)
+
+purchase_request_to_new_purchase_request_notification_mapper_config = MapperConfig(
+    source_type=PurchaseRequest,
+    target_type=NewPurchaseRequestNotification,
+    computed_fields={
+        'total_price': lambda source: source.get_total_price(),
+    },
+    nested_mapper_configs=[
+        purchase_request_product_to_new_purchase_request_notification_product_mapper_config,
+    ],
 )
 
 
@@ -78,10 +97,18 @@ class CreatePurchaseRequestHandler(
             CreatePurchaseRequestCommand,
             PurchaseRequest,
         ],
+        new_purchase_request_notification_mapper: Mapper[
+            MapperConfig[PurchaseRequest, NewPurchaseRequestNotification],
+            PurchaseRequest,
+            NewPurchaseRequestNotification,
+        ],
         product_purchase_request_notificator: ProductPurchaseRequestNotificator,
     ):
         self._purchase_request_repo = purchase_request_repo
         self._purchase_request_mapper = purchase_request_mapper
+        self._new_purchase_request_notification_mapper = (
+            new_purchase_request_notification_mapper
+        )
         self._product_purchase_request_notificator = (
             product_purchase_request_notificator
         )
@@ -99,21 +126,11 @@ class CreatePurchaseRequestHandler(
 
         await self._purchase_request_repo.add(purchase_request)
 
-        notification = NewPurchaseRequestNotification(
-            phone_number=purchase_request.phone_number,
-            name=purchase_request.name,
-            created_at=now,
-            total_price=purchase_request.get_total_price(),
-            products=[
-                NewPurchaseRequestNotificationProduct(
-                    name=purchase_request_product.name,
-                    description=purchase_request_product.description,
-                    price=purchase_request_product.price,
-                    total_price=purchase_request_product.get_total_price(),
-                    count=purchase_request_product.count,
-                )
-                for purchase_request_product in purchase_request.products
-            ],
+        notification = self._new_purchase_request_notification_mapper.map(
+            purchase_request,
+            extra={
+                'created_at': now,
+            },
         )
 
         await self._product_purchase_request_notificator.send_new_request_notification(
