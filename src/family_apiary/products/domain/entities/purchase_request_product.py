@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from decimal import Decimal
 
 from commons.entities.base import BaseEntity
 from commons.value_objects import MoneyDecimal, PositiveInt

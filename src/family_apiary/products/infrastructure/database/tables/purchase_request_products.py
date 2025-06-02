@@ -1,4 +1,5 @@
 import sqlalchemy as sa
+from sqlalchemy.types import Float
 
 from family_apiary.products.infrastructure.database.meta import metadata
 
@@ -41,7 +42,7 @@ purchase_request_products_table = sa.Table(
     ),
     sa.Column(
         'price',
-        sa.DECIMAL,
+        Float,  # TODO: использовать Decimal
         nullable=False,
     ),
     sa.Column(
