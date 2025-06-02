@@ -1,0 +1,60 @@
+version: "3.8"
+services:
+  db:
+    image: "postgres:16"
+    ports:
+      - "8400:5432"
+    environment:
+      - POSTGRES_DB=family_apiary
+      - POSTGRES_USER=family_apiary
+      - POSTGRES_PASSWORD=family_apiary
+    volumes:
+      - ./db-data:/var/lib/postgresql/data
+    logging:
+      options:
+        max-size: 50m
+  rabbitmq:
+    image: "rabbitmq:3-management-alpine"
+    ports:
+      - "5772:5672"
+      - "16672:15672"
+    logging:
+      options:
+        max-size: 50m
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+    logging:
+      options:
+        max-size: 50m
+  minio:
+    image: quay.io/minio/minio:latest
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      - MINIO_ROOT_USER=family_apiary
+      - MINIO_ROOT_PASSWORD=family_apiary
+      - MINIO_ADDRESS=:9000
+      - MINIO_CONSOLE_ADDRESS=:9001
+    volumes:
+      - ./minio/data:/data
+    command: server /data
+    logging:
+      options:
+        max-size: 50m
+  prometheus:
+    image: prom/prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus-data/prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - "--config.file=/etc/prometheus/prometheus.yml"
+  grafana:
+    image: grafana/grafana
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./grafana-data:/var/lib/grafana

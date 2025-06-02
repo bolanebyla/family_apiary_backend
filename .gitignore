@@ -1,7 +1,7 @@
 .idea/
-deployment/db-data/
-deployment/minio/
-deployment/grafana-data/
+docker-compose/db-data/
+docker-compose/minio/
+docker-compose/grafana-data/
 tmp/
 
 # Byte-compiled / optimized / DLL files
