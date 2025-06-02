@@ -73,25 +73,67 @@ def include_only_current_schema(
     ],
 ) -> bool:
     """
-    Проверят, что схема является схемой из metadata
+    Проверят, что схема является схемой из metadata.
+    Для SQLite пропускает проверку схемы.
     """
+    # Для SQLite пропускаем проверку схемы
+    if context.get_bind().dialect.name == 'sqlite':
+        return True
+
     if type_ == 'schema':
         return name in [target_metadata.schema]
     else:
         return True
 
 
+def get_table_name(name: str, schema: str | None) -> str:
+    """
+    Для SQLite добавляет имя схемы к имени таблицы, чтобы избежать конфликтов имен.
+    Для других БД возвращает оригинальное имя таблицы.
+    """
+    if context.get_bind().dialect.name == 'sqlite' and schema:
+        return f'{schema}_{name}'
+    return name
+
+
+def include_object(object, name, type_, reflected, compare_to):
+    """
+    Фильтрует объекты для SQLite, убирая схему из имен таблиц
+    """
+    if context.get_bind().dialect.name == 'sqlite':
+        if type_ == 'table':
+            # Убираем схему из имени таблицы
+            object.schema = None
+    return True
+
+
 def do_run_migrations(connection: Connection) -> None:  # noqa: D103
-    context.configure(
-        connection=connection,
-        target_metadata=target_metadata,
-        version_table_schema=target_metadata.schema,
-        include_name=include_only_current_schema,
-        include_schemas=True,
-    )
+    # Для SQLite убираем схему из конфигурации
+    if connection.dialect.name == 'sqlite':
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+            include_name=include_only_current_schema,
+            include_schemas=False,  # Отключаем поддержку схем для SQLite
+            include_object=include_object,  # Добавляем фильтр объектов
+        )
+    else:
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata,
+            version_table_schema=target_metadata.schema,
+            include_name=include_only_current_schema,
+            include_schemas=True,
+        )
 
     with context.begin_transaction():
-        context.execute(f'CREATE SCHEMA IF NOT EXISTS {target_metadata.schema}')
+        # Создаем схему перед созданием таблиц
+        if connection.dialect.name != 'sqlite':
+            context.execute(
+                f'CREATE SCHEMA IF NOT EXISTS {target_metadata.schema}'
+            )
+            # Устанавливаем схему по умолчанию для текущей сессии
+            context.execute(f'SET search_path TO {target_metadata.schema}')
         context.run_migrations()
 
 

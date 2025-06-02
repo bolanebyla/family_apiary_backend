@@ -8,7 +8,8 @@ naming_convention = {
     'pk': 'pk_%(table_name)s',
 }
 
-schema = 'tasks'
+schema = 'products'
+
 metadata = MetaData(
     naming_convention=naming_convention,
     schema=schema,

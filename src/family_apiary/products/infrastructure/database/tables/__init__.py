@@ -1,0 +1,2 @@
+from .purchase_request_products import purchase_request_products_table
+from .purchase_requests import purchase_requests_table
