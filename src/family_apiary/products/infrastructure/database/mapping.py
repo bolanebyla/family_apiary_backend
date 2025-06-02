@@ -14,6 +14,7 @@ mapper = registry()
 mapper.map_imperatively(
     PurchaseRequestProduct,
     purchase_request_products_table,
+    exclude_properties=['purchase_request_id'],
 )
 
 mapper.map_imperatively(
@@ -22,6 +23,7 @@ mapper.map_imperatively(
     properties={
         'products': relationship(
             'PurchaseRequestProduct',
+            cascade='all, delete-orphan',
         ),
     },
 )
