@@ -17,39 +17,22 @@ from commons.mappers.mapper import (
 )
 
 
-class PydanticMapper(Mapper[C, T, R]):
+class PydanticMapper(Mapper):
     """Реализация маппера с использованием Pydantic"""
 
-    def __init__(self, mapper_config: MapperConfig[T, R]):
-        self.mapper_config = mapper_config
-        self._init_mapper(mapper_config=mapper_config)
-
-    def _init_mapper(self, mapper_config: MapperConfig[Type, Type]) -> None:
-        """Инициализация маппера"""
-        try:
-            self._init_nested_mapper_configs(
-                nested_mapper_configs=mapper_config.nested_mapper_configs,
-            )
-
-            # Создаем кэш для вложенных мапперов
-            self._nested_mappers = {}
-            for nested_config in mapper_config.nested_mapper_configs:
-                self._nested_mappers[nested_config.source_type] = (
-                    PydanticMapper(nested_config)
-                )
-
-            # Создаем динамическую модель Pydantic для маппинга
-            self.mapping_model = self._create_mapping_model(mapper_config)
-
-        except Exception as e:
-            raise RuntimeError(f'Failed to initialize mapper: {e}')
+    def __init__(self):
+        # Кэш для вложенных мапперов
+        self._nested_mappers = {}
 
     def _init_nested_mapper_configs(
         self, nested_mapper_configs: list[MapperConfig[Any, Any]]
     ) -> None:
         """Инициализация вложенных мапперов"""
         for nested_mapper_config in nested_mapper_configs:
-            self._init_mapper(mapper_config=nested_mapper_config)
+            if nested_mapper_config.source_type not in self._nested_mappers:
+                self._nested_mappers[nested_mapper_config.source_type] = (
+                    PydanticMapper()
+                )
 
     def _create_mapping_model(
         self, mapper_config: MapperConfig[Type, Type]
@@ -142,15 +125,21 @@ class PydanticMapper(Mapper[C, T, R]):
     def map(
         self,
         source: T,
+        mapper_config: C,
         extra: dict[str, Any] | None = None,
     ) -> R:
         """Маппинг одного объекта"""
         try:
+            # Инициализируем вложенные мапперы
+            self._init_nested_mapper_configs(
+                nested_mapper_configs=mapper_config.nested_mapper_configs,
+            )
+
             # Преобразуем объект в словарь
             source_dict = self._object_to_dict(source)
 
             # Получаем поля целевого типа
-            target_fields = self._get_fields(self.mapper_config.target_type)
+            target_fields = self._get_fields(mapper_config.target_type)
 
             # Применяем маппинг полей
             mapped_dict = {}
@@ -159,7 +148,7 @@ class PydanticMapper(Mapper[C, T, R]):
             for (
                 target_field,
                 source_field,
-            ) in self.mapper_config.field_mappings.items():
+            ) in mapper_config.field_mappings.items():
                 if (
                     source_field in source_dict
                     and target_field in target_fields
@@ -169,7 +158,7 @@ class PydanticMapper(Mapper[C, T, R]):
             # Копируем остальные поля, которые есть в целевом типе
             for field_name, value in source_dict.items():
                 if (
-                    field_name not in self.mapper_config.field_mappings.values()
+                    field_name not in mapper_config.field_mappings.values()
                     and field_name in target_fields
                 ):
                     mapped_dict[field_name] = value
@@ -178,7 +167,7 @@ class PydanticMapper(Mapper[C, T, R]):
             for (
                 computed_field_name,
                 computed_func,
-            ) in self.mapper_config.computed_fields.items():
+            ) in mapper_config.computed_fields.items():
                 if computed_field_name in target_fields:
                     mapped_dict[computed_field_name] = computed_func(source)
 
@@ -189,54 +178,75 @@ class PydanticMapper(Mapper[C, T, R]):
                         mapped_dict[field_name] = value
 
             # Обрабатываем вложенные объекты
-            self._process_nested_objects(mapped_dict)
+            self._process_nested_objects(mapped_dict, mapper_config)
 
             # Создаем целевой объект
-            return self.mapper_config.target_type(**mapped_dict)
+            return mapper_config.target_type(**mapped_dict)
 
         except ValidationError as e:
             raise ValueError(f'Validation error during mapping: {e}')
         except Exception as e:
             raise RuntimeError(f'Mapping error: {e}')
 
-    def _process_nested_objects(self, mapped_dict: dict[str, Any]) -> None:
+    def _process_nested_objects(
+        self, mapped_dict: dict[str, Any], mapper_config: C
+    ) -> None:
         """Обработка вложенных объектов"""
         for field_name, value in list(mapped_dict.items()):
             if isinstance(value, list):
                 # Обрабатываем списки
                 mapped_dict[field_name] = [
-                    self._map_nested_object(item, field_name) for item in value
+                    self._map_nested_object(item, field_name, mapper_config)
+                    for item in value
                 ]
             else:
                 # Обрабатываем одиночные объекты
-                mapped_value = self._map_nested_object(value, field_name)
+                mapped_value = self._map_nested_object(
+                    value, field_name, mapper_config
+                )
                 if mapped_value is not None:
                     mapped_dict[field_name] = mapped_value
 
-    def _map_nested_object(self, obj: Any, field_name: str = None) -> Any:
+    def _map_nested_object(
+        self, obj: Any, field_name: str = None, mapper_config: C = None
+    ) -> Any:
         """Маппинг вложенного объекта"""
         if obj is None:
             return None
 
         obj_type = type(obj)
         if obj_type in self._nested_mappers:
-            # Для вложенных объектов создаем extra с базовыми полями сущности
-            extra = {
-                'id': create_entity_id(),
-                'created_at': datetime.now(),
-                'updated_at': datetime.now(),
-            }
-            return self._nested_mappers[obj_type].map(obj, extra=extra)
+            # Находим соответствующий конфиг для вложенного объекта
+            nested_config = next(
+                (
+                    config
+                    for config in mapper_config.nested_mapper_configs
+                    if config.source_type == obj_type
+                ),
+                None,
+            )
+
+            if nested_config:
+                # Для вложенных объектов создаем extra с базовыми полями сущности
+                extra = {
+                    'id': create_entity_id(),
+                    'created_at': datetime.now(),
+                    'updated_at': datetime.now(),
+                }
+                return self._nested_mappers[obj_type].map(
+                    obj, nested_config, extra=extra
+                )
 
         return obj
 
     def map_many(
         self,
         sources: Iterable[T],
+        mapper_config: C,
         extra: dict[str, Any] | None = None,
     ) -> list[R]:
         """Маппинг множества объектов"""
-        return [self.map(source, extra) for source in sources]
+        return [self.map(source, mapper_config, extra) for source in sources]
 
     def _object_to_dict(self, obj: Any) -> dict[str, Any]:
         """Преобразование объекта в словарь"""
@@ -323,16 +333,14 @@ if __name__ == '__main__':
         source_type=Person,
         target_type=Contact,
         field_mappings={'title': 'name'},
-        computed_fields={
-            'slug': lambda source: f'{source["id"]}_{source["name"]}'
-        },
+        computed_fields={'slug': lambda source: f'{source.id}_{source.name}'},
         nested_mapper_configs=[
             contact_address_mapper_config,
             contact_comment_mapper_config,
         ],
     )
 
-    contact_mapper = PydanticMapper(mapper_config=contact_mapper_config)
+    contact_mapper = PydanticMapper()
 
     person = Person(
         id=1,
@@ -347,5 +355,7 @@ if __name__ == '__main__':
         ],
     )
 
-    contact = contact_mapper.map(person, extra={'created_at': datetime.now()})
+    contact = contact_mapper.map(
+        person, contact_mapper_config, extra={'created_at': datetime.now()}
+    )
     print(contact)

@@ -41,7 +41,7 @@ class CreatePurchaseRequestCommand:
     )
 
 
-create_purchase_request_command_product_mapper_config = MapperConfig(
+product_mapper_config = MapperConfig(
     source_type=CreatePurchaseRequestCommandProduct,
     target_type=PurchaseRequestProduct,
     computed_fields={
@@ -49,20 +49,18 @@ create_purchase_request_command_product_mapper_config = MapperConfig(
     },
 )
 
-create_purchase_request_command_to_purchase_request_mapper_config = (
-    MapperConfig(
-        source_type=CreatePurchaseRequestCommand,
-        target_type=PurchaseRequest,
-        computed_fields={
-            'id': lambda source: create_entity_id(),
-        },
-        nested_mapper_configs=[
-            create_purchase_request_command_product_mapper_config,
-        ],
-    )
+purchase_request_mapper_config = MapperConfig(
+    source_type=CreatePurchaseRequestCommand,
+    target_type=PurchaseRequest,
+    computed_fields={
+        'id': lambda source: create_entity_id(),
+    },
+    nested_mapper_configs=[
+        product_mapper_config,
+    ],
 )
 
-purchase_request_product_to_new_purchase_request_notification_product_mapper_config = MapperConfig(
+notification_product_mapper_config = MapperConfig(
     source_type=PurchaseRequestProduct,
     target_type=NewPurchaseRequestNotificationProduct,
     computed_fields={
@@ -70,14 +68,14 @@ purchase_request_product_to_new_purchase_request_notification_product_mapper_con
     },
 )
 
-purchase_request_to_new_purchase_request_notification_mapper_config = MapperConfig(
+notification_mapper_config = MapperConfig(
     source_type=PurchaseRequest,
     target_type=NewPurchaseRequestNotification,
     computed_fields={
         'total_price': lambda source: source.get_total_price(),
     },
     nested_mapper_configs=[
-        purchase_request_product_to_new_purchase_request_notification_product_mapper_config,
+        notification_product_mapper_config,
     ],
 )
 
@@ -92,23 +90,11 @@ class CreatePurchaseRequestHandler(
     def __init__(
         self,
         purchase_request_repo: PurchaseRequestRepo,
-        purchase_request_mapper: Mapper[
-            MapperConfig[CreatePurchaseRequestCommand, PurchaseRequest],
-            CreatePurchaseRequestCommand,
-            PurchaseRequest,
-        ],
-        new_purchase_request_notification_mapper: Mapper[
-            MapperConfig[PurchaseRequest, NewPurchaseRequestNotification],
-            PurchaseRequest,
-            NewPurchaseRequestNotification,
-        ],
+        mapper: Mapper,
         product_purchase_request_notificator: ProductPurchaseRequestNotificator,
     ):
         self._purchase_request_repo = purchase_request_repo
-        self._purchase_request_mapper = purchase_request_mapper
-        self._new_purchase_request_notification_mapper = (
-            new_purchase_request_notification_mapper
-        )
+        self._mapper = mapper
         self._product_purchase_request_notificator = (
             product_purchase_request_notificator
         )
@@ -116,8 +102,9 @@ class CreatePurchaseRequestHandler(
     async def handle(self, command: CreatePurchaseRequestCommand) -> None:
         now = now_tz()
 
-        purchase_request = self._purchase_request_mapper.map(
+        purchase_request = self._mapper.map(
             source=command,
+            mapper_config=purchase_request_mapper_config,
             extra={
                 'created_at': now,
                 'updated_at': now,
@@ -126,8 +113,9 @@ class CreatePurchaseRequestHandler(
 
         await self._purchase_request_repo.add(purchase_request)
 
-        notification = self._new_purchase_request_notification_mapper.map(
+        notification = self._mapper.map(
             purchase_request,
+            mapper_config=notification_mapper_config,
             extra={
                 'created_at': now,
             },

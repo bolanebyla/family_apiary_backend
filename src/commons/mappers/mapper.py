@@ -27,11 +27,16 @@ class MapperConfig(Generic[T, R]):
     """Конфиги мапперов для вложенных классов"""
 
 
-class Mapper(Generic[C, T, R]):
+class Mapper:
     @abstractmethod
-    def map(self, source: T, extra: dict[str, Any] | None = None) -> R: ...
+    def map(
+        self, source: T, mapper_config: C, extra: dict[str, Any] | None = None
+    ) -> R: ...
 
     @abstractmethod
     def map_many(
-        self, sources: Iterable[T], extra: dict[str, Any] | None = None
+        self,
+        sources: Iterable[T],
+        mapper_config: C,
+        extra: dict[str, Any] | None = None,
     ) -> Iterable[R]: ...
