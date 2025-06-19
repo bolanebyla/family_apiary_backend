@@ -178,7 +178,7 @@ class PydanticMapper(Mapper):
                         mapped_dict[field_name] = value
 
             # Обрабатываем вложенные объекты
-            self._process_nested_objects(mapped_dict, mapper_config)
+            self._process_nested_objects(mapped_dict, mapper_config, extra)
 
             # Создаем целевой объект
             return mapper_config.target_type(**mapped_dict)
@@ -189,26 +189,35 @@ class PydanticMapper(Mapper):
             raise RuntimeError(f'Mapping error: {e}')
 
     def _process_nested_objects(
-        self, mapped_dict: dict[str, Any], mapper_config: C
+        self,
+        mapped_dict: dict[str, Any],
+        mapper_config: C,
+        extra: dict[str, Any] | None = None,
     ) -> None:
         """Обработка вложенных объектов"""
         for field_name, value in list(mapped_dict.items()):
             if isinstance(value, list):
                 # Обрабатываем списки
                 mapped_dict[field_name] = [
-                    self._map_nested_object(item, field_name, mapper_config)
+                    self._map_nested_object(
+                        item, field_name, mapper_config, extra
+                    )
                     for item in value
                 ]
             else:
                 # Обрабатываем одиночные объекты
                 mapped_value = self._map_nested_object(
-                    value, field_name, mapper_config
+                    value, field_name, mapper_config, extra
                 )
                 if mapped_value is not None:
                     mapped_dict[field_name] = mapped_value
 
     def _map_nested_object(
-        self, obj: Any, field_name: str = None, mapper_config: C = None
+        self,
+        obj: Any,
+        field_name: str = None,
+        mapper_config: C = None,
+        extra: dict[str, Any] | None = None,
     ) -> Any:
         """Маппинг вложенного объекта"""
         if obj is None:
@@ -227,12 +236,6 @@ class PydanticMapper(Mapper):
             )
 
             if nested_config:
-                # Для вложенных объектов создаем extra с базовыми полями сущности
-                extra = {
-                    'id': create_entity_id(),
-                    'created_at': datetime.now(),
-                    'updated_at': datetime.now(),
-                }
                 return self._nested_mappers[obj_type].map(
                     obj, nested_config, extra=extra
                 )
