@@ -253,7 +253,9 @@ class NestedObjectProcessor:
             return None
 
         obj_type = type(obj)
-        if obj_type in self._mapper._nested_mappers:
+        nested_mapper = self._mapper.get_nested_mapper(obj_type)
+
+        if nested_mapper is not None:
             nested_config = next(
                 (
                     config
@@ -264,9 +266,7 @@ class NestedObjectProcessor:
             )
 
             if nested_config:
-                return self._mapper._nested_mappers[obj_type].map(
-                    obj, nested_config, extra=extra
-                )
+                return nested_mapper.map(obj, nested_config, extra=extra)
 
         return obj
 
@@ -323,6 +323,10 @@ class MapperImpl(Mapper):
         self._nested_object_processor = NestedObjectProcessor(self)
         self._nested_mapper_initializer = NestedMapperInitializer()
         self._object_validator = ObjectValidator()
+
+    def get_nested_mapper(self, source_type: Type[Any]) -> 'MapperImpl | None':
+        """Получает вложенный маппер для указанного типа"""
+        return self._nested_mappers.get(source_type)
 
     def map(
         self,
