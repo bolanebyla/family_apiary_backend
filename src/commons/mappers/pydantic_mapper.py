@@ -174,15 +174,13 @@ class PydanticMapper(Mapper[C, T, R]):
                 ):
                     mapped_dict[field_name] = value
 
-            # Применяем вычисляемые поля
+            # Применяем вычисляемые поля - передаем исходный объект
             for (
                 computed_field_name,
                 computed_func,
             ) in self.mapper_config.computed_fields.items():
                 if computed_field_name in target_fields:
-                    mapped_dict[computed_field_name] = computed_func(
-                        source_dict
-                    )
+                    mapped_dict[computed_field_name] = computed_func(source)
 
             # Добавляем поля из extra, которые есть в целевом типе
             if extra:
