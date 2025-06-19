@@ -1,7 +1,7 @@
 from dishka import Provider, Scope, provide
 
 from commons.mappers import Mapper
-from commons.mappers.pydantic_mapper import PydanticMapper
+from commons.mappers.mapper_impl import MapperImpl
 
 
 class MapperProvider(Provider):
@@ -11,4 +11,4 @@ class MapperProvider(Provider):
     def create_mapper(
         self,
     ) -> Mapper:
-        return PydanticMapper()
+        return MapperImpl()
