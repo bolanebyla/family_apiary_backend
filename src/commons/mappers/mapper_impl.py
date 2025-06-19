@@ -14,6 +14,110 @@ from commons.mappers.mapper import (
 )
 
 
+class MapperError(Exception):
+    """Базовый класс для всех ошибок маппера"""
+
+    pass
+
+
+class MapperObjectTypeError(MapperError):
+    """Ошибка при определении типа объекта, переданного в метод маппера"""
+
+    def __init__(self, obj: Any, message: str | None = None):
+        self.obj = obj
+        self.obj_type = type(obj)
+        super().__init__(
+            message
+            or f'The mapper does not work with the "{self.obj_type}" type'
+        )
+
+
+class MapperConfigTypeError(MapperError):
+    """Ошибка при определении типа класса в конфигурации маппера"""
+
+    def __init__(self, cls: Type[Any], message: str | None = None):
+        self.cls = cls
+        super().__init__(
+            message
+            or f'The mapper does not work with the "{cls}" type in MapperConfig'
+        )
+
+
+class FieldExtractionError(MapperError):
+    """Ошибка при извлечении полей из класса"""
+
+    def __init__(self, cls: Type[Any], original_error: Exception):
+        self.cls = cls
+        self.original_error = original_error
+        super().__init__(
+            f'Error extracting fields from {cls}: {original_error}'
+        )
+
+
+class ObjectConversionError(MapperError):
+    """Ошибка при конвертации объекта в словарь"""
+
+    def __init__(self, obj: Any, original_error: Exception | None = None):
+        self.obj = obj
+        self.obj_type = type(obj)
+        self.original_error = original_error
+
+        message = f'Cannot convert object of type {self.obj_type} to dict'
+        if original_error:
+            message += f': {original_error}'
+
+        super().__init__(message)
+
+
+class FieldMappingError(MapperError):
+    """Ошибка при маппинге полей"""
+
+    def __init__(
+        self, source_field: str, target_field: str, message: str | None = None
+    ):
+        self.source_field = source_field
+        self.target_field = target_field
+        super().__init__(
+            message
+            or f'Failed to map field "{source_field}" to "{target_field}"'
+        )
+
+
+class ComputedFieldError(MapperError):
+    """Ошибка при вычислении поля"""
+
+    def __init__(self, field_name: str, original_error: Exception):
+        self.field_name = field_name
+        self.original_error = original_error
+        super().__init__(
+            f'Error computing field "{field_name}": {original_error}'
+        )
+
+
+class NestedMappingError(MapperError):
+    """Ошибка при маппинге вложенных объектов"""
+
+    def __init__(self, obj_type: Type[Any], original_error: Exception):
+        self.obj_type = obj_type
+        self.original_error = original_error
+        super().__init__(
+            f'Error mapping nested object of type {obj_type.__name__}: {original_error}'
+        )
+
+
+class ValidationMappingError(MapperError):
+    """Ошибка валидации при создании целевого объекта"""
+
+    def __init__(
+        self, target_type: Type[Any], validation_error: ValidationError
+    ):
+        self.target_type = target_type
+        self.validation_error = validation_error
+        super().__init__(
+            f'Validation error creating {target_type.__name__}: {validation_error}'
+        )
+
+
 class ObjectType(StrEnum):
     """Типы объектов, поддерживаемые маппером"""
 
@@ -50,6 +154,20 @@ class ObjectTypeDetector:
         else:
             return ObjectType.UNSUPPORTED
 
+    @staticmethod
+    def validate_object_type(obj: Any) -> None:
+        """Проверяет, поддерживается ли тип объекта"""
+        obj_type = ObjectTypeDetector.detect_type(obj)
+        if obj_type == ObjectType.UNSUPPORTED:
+            raise MapperObjectTypeError(obj)
+
+    @staticmethod
+    def validate_class_type(cls: Type[Any]) -> None:
+        """Проверяет, поддерживается ли тип класса"""
+        cls_type = ObjectTypeDetector.detect_class_type(cls)
+        if cls_type == ObjectType.UNSUPPORTED:
+            raise MapperConfigTypeError(cls)
+
 
 class ObjectConverter:
     """Универсальный конвертер объектов в словари"""
@@ -59,20 +177,25 @@ class ObjectConverter:
 
     def to_dict(self, obj: Any) -> dict[str, Any]:
         """Конвертирует объект в словарь"""
-        obj_type = self._type_detector.detect_type(obj)
+        try:
+            self._type_detector.validate_object_type(obj)
+            obj_type = self._type_detector.detect_type(obj)
 
-        if obj_type == ObjectType.DATACLASS:
-            return {
-                field.name: getattr(obj, field.name) for field in fields(obj)
-            }
-        elif obj_type == ObjectType.PYDANTIC:
-            return obj.dict()
-        elif obj_type == ObjectType.DICT_LIKE:
-            return obj.__dict__
-        else:
-            raise TypeError(
-                f'Cannot convert object of type {type(obj)} to dict'
-            )
+            if obj_type == ObjectType.DATACLASS:
+                return {
+                    field.name: getattr(obj, field.name)
+                    for field in fields(obj)
+                }
+            elif obj_type == ObjectType.PYDANTIC:
+                return obj.dict()
+            elif obj_type == ObjectType.DICT_LIKE:
+                return obj.__dict__
+            else:
+                raise ObjectConversionError(obj)
+        except MapperError:
+            raise
+        except Exception as e:
+            raise ObjectConversionError(obj, e)
 
 
 class FieldTypeResolver:
@@ -106,14 +229,20 @@ class FieldExtractor:
 
     def get_fields(self, cls: Type[Any]) -> list[str]:
         """Получает список полей класса"""
-        cls_type = self._type_detector.detect_class_type(cls)
+        try:
+            self._type_detector.validate_class_type(cls)
+            cls_type = self._type_detector.detect_class_type(cls)
 
-        if cls_type == ObjectType.DATACLASS:
-            return self._get_dataclass_fields(cls)
-        elif cls_type == ObjectType.PYDANTIC:
-            return list(cls.__annotations__.keys())
-        else:
-            raise TypeError(f'The mapper does not work with the "{cls}" type')
+            if cls_type == ObjectType.DATACLASS:
+                return self._get_dataclass_fields(cls)
+            elif cls_type == ObjectType.PYDANTIC:
+                return list(cls.__annotations__.keys())
+            else:
+                raise MapperConfigTypeError(cls)
+        except MapperError:
+            raise
+        except Exception as e:
+            raise FieldExtractionError(cls, e)
 
     @staticmethod
     def _get_dataclass_fields(cls: Type[Any]) -> list[str]:
@@ -181,7 +310,10 @@ class ComputedFieldProcessor:
             computed_func,
         ) in mapper_config.computed_fields.items():
             if computed_field_name in target_fields:
-                computed_dict[computed_field_name] = computed_func(source)
+                try:
+                    computed_dict[computed_field_name] = computed_func(source)
+                except Exception as e:
+                    raise ComputedFieldError(computed_field_name, e)
 
         return computed_dict
 
@@ -266,7 +398,12 @@ class NestedObjectProcessor:
             )
 
             if nested_config:
-                return nested_mapper.map(obj, nested_config, extra=extra)
+                try:
+                    return nested_mapper.map(obj, nested_config, extra=extra)
+                except MapperError:
+                    raise
+                except Exception as e:
+                    raise NestedMappingError(obj_type, e)
 
         return obj
 
@@ -296,9 +433,15 @@ class ObjectValidator:
         try:
             target_type(**mapped_dict)
         except ValidationError as e:
-            raise ValueError(f'Validation error during mapping: {e}')
+            raise ValidationMappingError(target_type, e)
         except Exception as e:
-            raise RuntimeError(f'Mapping error: {e}')
+            raise ValidationMappingError(
+                target_type,
+                ValidationError.from_exception_data(
+                    'ValidationError',
+                    [{'loc': (), 'msg': str(e), 'type': 'value_error'}],
+                ),
+            )
 
 
 class MapperImpl(Mapper):
@@ -377,10 +520,12 @@ class MapperImpl(Mapper):
             # Создаем целевой объект
             return mapper_config.target_type(**mapped_dict)
 
+        except MapperError:
+            # Пробрасываем кастомные ошибки маппера
+            raise
         except Exception as e:
-            if isinstance(e, (ValueError, RuntimeError)):
-                raise
-            raise RuntimeError(f'Mapping error: {e}')
+            # Оборачиваем неожиданные ошибки в базовую ошибку маппера
+            raise MapperError(f'Unexpected error during mapping: {e}') from e
 
     def map_many(
         self,
@@ -483,7 +628,252 @@ if __name__ == '__main__':
         ],
     )
 
-    contact = contact_mapper.map(
-        person, contact_mapper_config, extra={'created_at': datetime.now()}
+    # Успешный маппинг
+    try:
+        contact = contact_mapper.map(
+            person, contact_mapper_config, extra={'created_at': datetime.now()}
+        )
+        print('Успешный маппинг:', contact)
+    except MapperError as e:
+        print(f'Ошибка маппера: {e}')
+
+    # Пример обработки кастомных ошибок
+    print('\n--- Примеры кастомных ошибок ---')
+
+    # 1. Ошибка неподдерживаемого типа объекта
+    # Возникает в ObjectTypeDetector.detect_type() при проверке объекта, переданного в map()
+    try:
+        unsupported_obj = 'простая строка'
+        contact_mapper.map(unsupported_obj, contact_mapper_config)
+    except MapperObjectTypeError as e:
+        print(f'MapperObjectTypeError: {e}')
+        print(f'  Тип объекта: {e.obj_type}')
+
+    # 1a. Ошибка неподдерживаемого типа класса (в FieldExtractor)
+    # Возникает в FieldExtractor.get_fields() при проверке типов в MapperConfig
+    class UnsupportedClass:
+        """Класс, который не является dataclass, pydantic моделью или dict-like"""
+
+        pass
+
+    unsupported_class_mapper_config = MapperConfig(
+        source_type=Person,
+        target_type=UnsupportedClass,  # Неподдерживаемый тип класса
     )
-    print(contact)
+
+    try:
+        contact_mapper.map(person, unsupported_class_mapper_config)
+    except MapperConfigTypeError as e:
+        print(f'MapperConfigTypeError: {e}')
+        print(f'  Тип класса: {e.cls}')
+
+    # 1b. Ошибка извлечения полей из класса
+    # Возникает в FieldExtractor.get_fields() при проблемах с рефлексией
+    class ProblematicClass:
+        """Класс с проблемами в аннотациях типов"""
+
+        def __init__(self):
+            self.normal_field = 'normal'
+
+        # Проблемная аннотация, которая может вызвать ошибку при get_type_hints
+        problematic_field: 'NonExistentType'  # type: ignore
+
+        @property
+        def property_field(self):
+            return 'property'
+
+    # Создаем проблемную ситуацию, которая может вызвать ошибку при извлечении полей
+    problematic_class_mapper_config = MapperConfig(
+        source_type=Person,
+        target_type=ProblematicClass,
+    )
+
+    try:
+        contact_mapper.map(person, problematic_class_mapper_config)
+    except FieldExtractionError as e:
+        print(f'FieldExtractionError: {e}')
+        print(f'  Класс: {e.cls}')
+        print(f'  Исходная ошибка: {e.original_error}')
+    except MapperError as e:
+        print(f'MapperError: {e}')
+
+    # 1c. Альтернативный пример FieldExtractionError - класс с проблемами в dataclass
+    @dataclass
+    class BrokenDataclass:
+        """Dataclass с проблемами, которые вызовут ошибку при извлечении полей"""
+
+        normal_field: str
+
+        def __post_init__(self):
+            # Имитируем проблему при инициализации dataclass
+            if self.normal_field == 'break':
+                # Это вызовет ошибку при попытке получить поля через fields()
+                raise RuntimeError('Dataclass is broken!')
+
+    # Создаем экземпляр, который вызовет проблему
+    try:
+        broken_dataclass_mapper_config = MapperConfig(
+            source_type=Person,
+            target_type=BrokenDataclass,
+        )
+
+        contact_mapper.map(person, broken_dataclass_mapper_config)
+    except FieldExtractionError as e:
+        print(f'FieldExtractionError (dataclass): {e}')
+        print(f'  Класс: {e.cls}')
+        print(f'  Исходная ошибка: {e.original_error}')
+    except MapperError as e:
+        print(f'MapperError: {e}')
+
+    # 2. Ошибка вычисляемого поля
+    def failing_computed_field(source):
+        raise ValueError('Ошибка в вычисляемом поле')
+
+    failing_mapper_config = MapperConfig(
+        source_type=Person,
+        target_type=Contact,
+        computed_fields={'slug': failing_computed_field},
+    )
+
+    try:
+        contact_mapper.map(person, failing_mapper_config)
+    except ComputedFieldError as e:
+        print(f'ComputedFieldError: {e}')
+        print(f'  Поле: {e.field_name}')
+        print(f'  Исходная ошибка: {e.original_error}')
+
+    # 3. Ошибка вложенного маппинга
+    @dataclass
+    class ProblematicAddress:
+        street: str
+
+    @dataclass
+    class ProblematicContactAddress:
+        street: str
+
+        def __post_init__(self):
+            # Ошибка возникает при создании целевого объекта
+            if self.street == 'problematic_street':
+                raise ValueError('Проблемная улица!')
+
+    # Конфигурация маппера для проблемного адреса
+    problematic_address_mapper_config = MapperConfig(
+        source_type=ProblematicAddress,
+        target_type=ProblematicContactAddress,
+    )
+
+    problematic_person = Person(
+        id=1,
+        name='test',
+        age=20,
+        address=ProblematicAddress(
+            street='problematic_street'
+        ),  # Нормальное создание
+        comments=[],
+    )
+
+    # Конфигурация с проблемным вложенным маппером
+    problematic_contact_mapper_config = MapperConfig(
+        source_type=Person,
+        target_type=Contact,
+        field_mappings={'title': 'name'},
+        computed_fields={'slug': lambda source: f'{source.id}_{source.name}'},
+        nested_mapper_configs=[problematic_address_mapper_config],
+    )
+
+    try:
+        contact_mapper.map(
+            problematic_person,
+            problematic_contact_mapper_config,
+            extra={'created_at': datetime.now()},
+        )
+    except NestedMappingError as e:
+        print(f'NestedMappingError: {e}')
+        print(f'  Тип объекта: {e.obj_type}')
+        print(f'  Исходная ошибка: {e.original_error}')
+    except MapperError as e:
+        print(f'MapperError: {e}')
+
+    # 3a. Альтернативный пример NestedMappingError - ошибка в процессе маппинга
+    @dataclass
+    class ComplexAddress:
+        street: str
+        city: str
+
+    @dataclass
+    class ComplexContactAddress:
+        street: str
+        city: str
+
+    def problematic_mapping_function(source):
+        # Имитируем ошибку в процессе маппинга
+        if source.street == 'error_street':
+            raise RuntimeError('Ошибка в процессе маппинга адреса')
+        return source.street
+
+    complex_address_mapper_config = MapperConfig(
+        source_type=ComplexAddress,
+        target_type=ComplexContactAddress,
+        computed_fields={'street': problematic_mapping_function},
+    )
+
+    complex_person = Person(
+        id=1,
+        name='test',
+        age=20,
+        address=ComplexAddress(street='error_street', city='test_city'),
+        comments=[],
+    )
+
+    complex_contact_mapper_config = MapperConfig(
+        source_type=Person,
+        target_type=Contact,
+        field_mappings={'title': 'name'},
+        computed_fields={'slug': lambda source: f'{source.id}_{source.name}'},
+        nested_mapper_configs=[complex_address_mapper_config],
+    )
+
+    try:
+        contact_mapper.map(
+            complex_person,
+            complex_contact_mapper_config,
+            extra={'created_at': datetime.now()},
+        )
+    except NestedMappingError as e:
+        print(f'NestedMappingError (альтернативный): {e}')
+        print(f'  Тип объекта: {e.obj_type}')
+        print(f'  Исходная ошибка: {e.original_error}')
+    except MapperError as e:
+        print(f'MapperError: {e}')
+
+    # 4. Ошибка валидации
+    @dataclass
+    class InvalidContact:
+        id: int
+        title: str
+        slug: str
+        created_at: datetime
+        # Отсутствует обязательное поле address
+        comments: list[ContactComment]
+
+    invalid_contact_mapper_config = MapperConfig(
+        source_type=Person,
+        target_type=InvalidContact,
+        field_mappings={'title': 'name'},
+        computed_fields={'slug': lambda source: f'{source.id}_{source.name}'},
+    )
+
+    try:
+        contact_mapper.map(
+            person,
+            invalid_contact_mapper_config,
+            extra={'created_at': datetime.now()},
+        )
+    except ValidationMappingError as e:
+        print(f'ValidationMappingError: {e}')
+        print(f'  Целевой тип: {e.target_type}')
+        print(f'  Ошибка валидации: {e.validation_error}')
+    except MapperError as e:
+        print(f'MapperError: {e}')
+
+    print('\n--- Конец примеров ---')
