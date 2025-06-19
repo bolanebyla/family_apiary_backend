@@ -14,7 +14,7 @@ class PurchaseRequestProduct(BaseEntity):
     name: str
     description: str
     category: str
-    price: MoneyDecimal
+    price: float
     count: PositiveInt
 
     def get_total_price(self) -> MoneyDecimal:

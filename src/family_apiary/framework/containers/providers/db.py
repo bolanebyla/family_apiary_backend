@@ -7,6 +7,8 @@ from commons.db.sqlalchemy import (
 )
 from family_apiary.framework.database.engine import (
     create_async_engine_from_settings,
+    create_db_read_only_transaction_context,
+    create_db_transaction_context,
 )
 from family_apiary.framework.database.settings import DBSettings
 
@@ -23,9 +25,16 @@ class DBProvider(Provider):
     ) -> AsyncEngine:
         return create_async_engine_from_settings(settings=db_settings)
 
-    db_transaction_context = provide(
-        AsyncTransactionContext,
-    )
-    db_read_only_transaction_context = provide(
-        AsyncReadOnlyTransactionContext,
-    )
+    @provide
+    def create_db_transaction_context(
+        self,
+        db_engine: AsyncEngine,
+    ) -> AsyncTransactionContext:
+        return create_db_transaction_context(db_engine=db_engine)
+
+    @provide
+    def create_db_read_only_transaction_context(
+        self,
+        db_engine: AsyncEngine,
+    ) -> AsyncReadOnlyTransactionContext:
+        return create_db_read_only_transaction_context(db_engine=db_engine)

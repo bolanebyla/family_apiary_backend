@@ -1,7 +1,7 @@
 from dishka import Provider, Scope, provide
 
 from commons.mappers import Mapper, MapperConfig
-from commons.mappers.mapper_impl import MapperImpl
+from commons.mappers.pydantic_mapper import PydanticMapper
 from family_apiary.products.application.dto import (
     NewPurchaseRequestNotification,
 )
@@ -24,7 +24,7 @@ class MapperProvider(Provider):
         CreatePurchaseRequestCommand,
         PurchaseRequest,
     ]:
-        return MapperImpl(
+        return PydanticMapper(
             mapper_config=create_purchase_request_command_to_purchase_request_mapper_config,
         )
 
@@ -36,6 +36,6 @@ class MapperProvider(Provider):
         PurchaseRequest,
         NewPurchaseRequestNotification,
     ]:
-        return MapperImpl(
+        return PydanticMapper(
             mapper_config=purchase_request_to_new_purchase_request_notification_mapper_config,
         )

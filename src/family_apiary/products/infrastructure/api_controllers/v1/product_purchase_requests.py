@@ -29,7 +29,7 @@ async def create_purchase_request(
             CreatePurchaseRequestCommandProduct(
                 name=req_product.name,
                 description=req_product.description,
-                price=MoneyDecimal(req_product.price),
+                price=req_product.price,  # MoneyDecimal(req_product.price),
                 category=req_product.category,
                 count=PositiveInt(req_product.count),
             )

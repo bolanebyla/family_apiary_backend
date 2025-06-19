@@ -24,7 +24,7 @@ class CreatePurchaseRequestCommandProduct:
     name: str
     description: str
     category: str
-    price: MoneyDecimal
+    price: float
     count: PositiveInt
 
 
