@@ -1,5 +1,5 @@
 from dataclasses import fields, is_dataclass
-from enum import Enum
+from enum import StrEnum, auto
 from inspect import isclass
 from typing import Any, Iterable, Type, get_type_hints
 
@@ -14,13 +14,13 @@ from commons.mappers.mapper import (
 )
 
 
-class ObjectType(Enum):
+class ObjectType(StrEnum):
     """Типы объектов, поддерживаемые маппером"""
 
-    DATACLASS = 'dataclass'
-    PYDANTIC = 'pydantic'
-    DICT_LIKE = 'dict_like'
-    UNSUPPORTED = 'unsupported'
+    DATACLASS = auto()
+    PYDANTIC = auto()
+    DICT_LIKE = auto()
+    UNSUPPORTED = auto()
 
 
 class ObjectTypeDetector:
