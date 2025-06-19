@@ -348,8 +348,11 @@ class ExtraFieldProcessor:
 class NestedObjectProcessor:
     """Обработчик вложенных объектов"""
 
-    def __init__(self, mapper: 'MapperImpl'):
+    def __init__(
+        self, mapper: 'MapperImpl', nested_mappers: dict[Type, 'MapperImpl']
+    ):
         self._mapper = mapper
+        self._nested_mappers = nested_mappers
 
     def process_nested_objects(
         self,
@@ -385,7 +388,7 @@ class NestedObjectProcessor:
             return None
 
         obj_type = type(obj)
-        nested_mapper = self._mapper.get_nested_mapper(obj_type)
+        nested_mapper = self._nested_mappers.get(obj_type)
 
         if nested_mapper is not None:
             nested_config = next(
@@ -453,9 +456,6 @@ class MapperImpl(Mapper):
     """
 
     def __init__(self):
-        # Кэш для вложенных мапперов
-        self._nested_mappers = {}
-
         # Инициализация зависимостей
         self._type_detector = ObjectTypeDetector()
         self._converter = ObjectConverter(self._type_detector)
@@ -463,13 +463,8 @@ class MapperImpl(Mapper):
         self._field_mapper = FieldMapper(self._field_extractor)
         self._computed_field_processor = ComputedFieldProcessor()
         self._extra_field_processor = ExtraFieldProcessor(self._field_extractor)
-        self._nested_object_processor = NestedObjectProcessor(self)
         self._nested_mapper_initializer = NestedMapperInitializer()
         self._object_validator = ObjectValidator()
-
-    def get_nested_mapper(self, source_type: Type[Any]) -> 'MapperImpl | None':
-        """Получает вложенный маппер для указанного типа"""
-        return self._nested_mappers.get(source_type)
 
     def map(
         self,
@@ -479,10 +474,18 @@ class MapperImpl(Mapper):
     ) -> R:
         """Маппинг одного объекта"""
         try:
+            # Создаем локальный кэш для вложенных мапперов
+            nested_mappers = {}
+
             # Инициализируем вложенные мапперы
             self._nested_mapper_initializer.initialize_nested_mappers(
                 nested_mapper_configs=mapper_config.nested_mapper_configs,
-                nested_mappers=self._nested_mappers,
+                nested_mappers=nested_mappers,
+            )
+
+            # Создаем процессор вложенных объектов с локальным кэшем
+            nested_object_processor = NestedObjectProcessor(
+                self, nested_mappers
             )
 
             # Преобразуем объект в словарь
@@ -513,7 +516,7 @@ class MapperImpl(Mapper):
             mapped_dict.update(extra_dict)
 
             # Обрабатываем вложенные объекты
-            self._nested_object_processor.process_nested_objects(
+            nested_object_processor.process_nested_objects(
                 mapped_dict, mapper_config, extra
             )
 
