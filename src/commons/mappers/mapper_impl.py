@@ -453,6 +453,8 @@ class MapperImpl(Mapper):
 
     Поддерживает мапинг датаклассов и pydantic моделей.
     Для маппинга используется Pydantic.
+
+    Потокобезопаен.
     """
 
     def __init__(self):
@@ -473,6 +475,42 @@ class MapperImpl(Mapper):
         extra: dict[str, Any] | None = None,
     ) -> R:
         """Маппинг одного объекта"""
+        return self._map_with_cache(source, mapper_config, extra)
+
+    def map_many(
+        self,
+        sources: Iterable[T],
+        mapper_config: C,
+        extra: dict[str, Any] | None = None,
+    ) -> list[R]:
+        """Маппинг множества объектов"""
+        # Создаем кэш один раз для всех объектов
+        nested_mappers = {}
+
+        # Инициализируем вложенные мапперы
+        self._nested_mapper_initializer.initialize_nested_mappers(
+            nested_mapper_configs=mapper_config.nested_mapper_configs,
+            nested_mappers=nested_mappers,
+        )
+
+        # Создаем процессор вложенных объектов с общим кэшем
+        nested_object_processor = NestedObjectProcessor(self, nested_mappers)
+
+        # Маппим все объекты с переиспользованием кэша
+        return [
+            self._map_with_processor(
+                source, mapper_config, extra, nested_object_processor
+            )
+            for source in sources
+        ]
+
+    def _map_with_cache(
+        self,
+        source: T,
+        mapper_config: C,
+        extra: dict[str, Any] | None = None,
+    ) -> R:
+        """Маппинг с созданием локального кэша"""
         try:
             # Создаем локальный кэш для вложенных мапперов
             nested_mappers = {}
@@ -488,6 +526,26 @@ class MapperImpl(Mapper):
                 self, nested_mappers
             )
 
+            return self._map_with_processor(
+                source, mapper_config, extra, nested_object_processor
+            )
+
+        except MapperError:
+            # Пробрасываем кастомные ошибки маппера
+            raise
+        except Exception as e:
+            # Оборачиваем неожиданные ошибки в базовую ошибку маппера
+            raise MapperError(f'Unexpected error during mapping: {e}') from e
+
+    def _map_with_processor(
+        self,
+        source: T,
+        mapper_config: C,
+        extra: dict[str, Any] | None = None,
+        nested_object_processor: NestedObjectProcessor | None = None,
+    ) -> R:
+        """Маппинг с переданным процессором вложенных объектов"""
+        try:
             # Преобразуем объект в словарь
             source_dict = self._converter.to_dict(source)
 
@@ -516,9 +574,10 @@ class MapperImpl(Mapper):
             mapped_dict.update(extra_dict)
 
             # Обрабатываем вложенные объекты
-            nested_object_processor.process_nested_objects(
-                mapped_dict, mapper_config, extra
-            )
+            if nested_object_processor:
+                nested_object_processor.process_nested_objects(
+                    mapped_dict, mapper_config, extra
+                )
 
             # Создаем целевой объект
             return mapper_config.target_type(**mapped_dict)
@@ -529,15 +588,6 @@ class MapperImpl(Mapper):
         except Exception as e:
             # Оборачиваем неожиданные ошибки в базовую ошибку маппера
             raise MapperError(f'Unexpected error during mapping: {e}') from e
-
-    def map_many(
-        self,
-        sources: Iterable[T],
-        mapper_config: C,
-        extra: dict[str, Any] | None = None,
-    ) -> list[R]:
-        """Маппинг множества объектов"""
-        return [self.map(source, mapper_config, extra) for source in sources]
 
 
 if __name__ == '__main__':
